@@ -3,51 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>نظام دورة العمل - اختبار الاتصال</title>
+<title>نظام دورة العمل — مجلس الإدارة</title>
 <style>
-  body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f5f6f8; margin:0; padding:40px 16px; }
-  .card { max-width:480px; margin:0 auto; background:#fff; border-radius:10px; padding:28px;
-          box-shadow:0 2px 10px rgba(0,0,0,.08); }
-  h1 { font-size:20px; margin-top:0; }
-  input { width:100%; padding:10px; margin:8px 0 16px; border:1px solid #ccc; border-radius:6px;
-          box-sizing:border-box; font-family:inherit; }
-  button { background:#1a73e8; color:#fff; border:none; padding:10px 20px; border-radius:6px;
-           cursor:pointer; font-size:15px; }
-  button:hover { background:#1558b0; }
-  #result { margin-top:20px; padding:14px; border-radius:6px; white-space:pre-wrap;
-            font-family:monospace; font-size:13px; display:none; }
-  .ok { background:#e6f4ea; color:#1e7e34; border:1px solid #b7e1c1; }
-  .err { background:#fdecea; color:#c0392b; border:1px solid #f5c6cb; }
+  body { font-family:'Segoe UI', Tahoma, sans-serif; background:#f5f6f8; margin:0; padding:24px 16px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { font-size:22px; margin-bottom:4px; }
+  .subtitle { color:#666; margin-top:0; margin-bottom:20px; }
+
+  .setup-card { background:#fff8e1; border:1px solid #ffe082; border-radius:10px;
+                padding:18px; margin-bottom:20px; }
+  .setup-card h2 { font-size:15px; margin:0 0 6px; }
+  .setup-card p { font-size:13px; color:#555; margin:0 0 12px; line-height:1.7; }
+  .setup-card .row { display:flex; gap:8px; }
+  .setup-card input { flex:1; padding:9px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+  .setup-card button { background:#1a73e8; color:#fff; border:none; padding:9px 18px;
+                        border-radius:6px; cursor:pointer; }
+
+  .status { display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:20px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:#ccc; }
+  .dot.ok { background:#34a853; }
+  .dot.err { background:#ea4335; }
+  .status a { color:#1a73e8; cursor:pointer; margin-right:auto; }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:520px) { .grid { grid-template-columns:1fr; } }
+
+  .tile { background:#fff; border-radius:10px; padding:18px; text-decoration:none; color:#222;
+          box-shadow:0 2px 8px rgba(0,0,0,.06); display:block; }
+  .tile:hover { box-shadow:0 4px 14px rgba(0,0,0,.1); }
+  .tile .icon { font-size:26px; margin-bottom:8px; }
+  .tile .name { font-weight:600; font-size:15px; }
+  .tile .desc { font-size:12px; color:#777; margin-top:4px; }
+
+  .tile.disabled { opacity:.5; pointer-events:none; background:#fafafa; }
+  .tile .badge { font-size:11px; background:#eee; color:#888; padding:2px 8px; border-radius:20px;
+                 display:inline-block; margin-top:6px; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>نظام دورة العمل — المرحلة 0: اختبار الاتصال</h1>
-    <label>رابط Web App (من Apps Script Deploy):</label>
-    <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
-    <button onclick="testConnection()">اختبار الاتصال</button>
-    <div id="result"></div>
+<div class="wrap">
+  <h1>نظام دورة العمل</h1>
+  <p class="subtitle">الإدارة العامة لمجلس الإدارة</p>
+
+  <div class="setup-card" id="setupCard">
+    <h2>خطوة أولى — وصل الموقع بمكان التخزين (مرة واحدة بس)</h2>
+    <p>الصق هنا رابط "Web App" اللي نسخته من Apps Script. هتعمل ده مرة واحدة بس في هذا المتصفح، وبعدها كل الصفحات هتشتغل عادي من غير ما تكرر الخطوة.</p>
+    <div class="row">
+      <input id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+      <button onclick="saveUrl()">حفظ</button>
+    </div>
   </div>
 
-<script>
-async function testConnection() {
-  const url = document.getElementById('apiUrl').value.trim();
-  const box = document.getElementById('result');
-  box.style.display = 'block';
-  box.className = '';
-  box.textContent = 'جارٍ الاتصال...';
-  if (!url) { box.className = 'err'; box.textContent = 'أدخل رابط Web App أولًا.'; return; }
+  <div class="status">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">جارٍ التحقق من الاتصال...</span>
+    <a onclick="showSetup()">تغيير الرابط</a>
+  </div>
 
+  <div class="grid">
+    <a class="tile" href="settings.html">
+      <div class="icon">⚙️</div>
+      <div class="name">الإعدادات</div>
+      <div class="desc">الجهات، أنواع المذكرات، الأعضاء، القوائم الثابتة</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">📄</div>
+      <div class="name">المذكرات</div>
+      <div class="desc">تسجيل المذكرات الواردة ورفع صورها</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">📋</div>
+      <div class="name">الجلسات والرول</div>
+      <div class="desc">إنشاء جلسة، ترتيب الرول، الطباعة</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">📝</div>
+      <div class="name">محضر الجلسة</div>
+      <div class="desc">تسجيل المداولات وربطها بالجلسة</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">✅</div>
+      <div class="name">القرارات</div>
+      <div class="desc">جدول القرارات والقرارات التنفيذية</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">🔄</div>
+      <div class="name">المتابعة</div>
+      <div class="desc">متابعة تنفيذ القرارات</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">🔍</div>
+      <div class="name">البحث</div>
+      <div class="desc">البحث في المذكرات والقرارات والجلسات</div>
+      <div class="badge">قريبًا</div>
+    </a>
+
+    <a class="tile disabled" href="#">
+      <div class="icon">📊</div>
+      <div class="name">لوحة المعلومات</div>
+      <div class="desc">أرقام وإحصائيات سريعة</div>
+      <div class="badge">قريبًا</div>
+    </a>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+function showSetup() {
+  document.getElementById('setupCard').style.display = 'block';
+  document.getElementById('apiUrlInput').value = API.getUrl();
+}
+
+function saveUrl() {
+  const val = document.getElementById('apiUrlInput').value.trim();
+  if (!val) return;
+  API.setUrl(val);
+  document.getElementById('setupCard').style.display = 'none';
+  checkStatus();
+}
+
+async function checkStatus() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  if (!API.getUrl()) {
+    dot.className = 'dot';
+    text.textContent = 'لم يتم ضبط الاتصال بعد — استخدم الصندوق أعلاه.';
+    document.getElementById('setupCard').style.display = 'block';
+    return;
+  }
   try {
-    const res = await fetch(url);
-    const data = await res.json();
-    box.className = 'ok';
-    box.textContent = JSON.stringify(data, null, 2);
-  } catch (err) {
-    box.className = 'err';
-    box.textContent = 'فشل الاتصال: ' + err.message;
+    await API.call('ping');
+    dot.className = 'dot ok';
+    text.textContent = 'متصل بنجاح ✅';
+    document.getElementById('setupCard').style.display = 'none';
+  } catch (e) {
+    dot.className = 'dot err';
+    text.textContent = 'غير متصل: ' + e.message;
+    document.getElementById('setupCard').style.display = 'block';
+    document.getElementById('apiUrlInput').value = API.getUrl();
   }
 }
+
+checkStatus();
 </script>
 </body>
 </html>
