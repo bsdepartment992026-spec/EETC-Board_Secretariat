@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الإعدادات — نظام دورة العمل</title>
+<style>
+  body { font-family:'Segoe UI', Tahoma, sans-serif; background:#f5f6f8; margin:0; padding:24px 16px; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:20px; }
+  .card { background:#fff; border-radius:10px; padding:20px; margin-bottom:18px;
+          box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .card h2 { font-size:16px; margin:0 0 12px; border-bottom:1px solid #eee; padding-bottom:8px; }
+  .row { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #f2f2f2; }
+  .row span.label { flex:1; }
+  .muted { color:#888; font-size:12px; }
+  input, select { padding:8px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+  button { background:#1a73e8; color:#fff; border:none; padding:8px 14px; border-radius:6px;
+           cursor:pointer; font-size:13px; }
+  button.secondary { background:#eee; color:#333; }
+  button.danger { background:#fdecea; color:#c0392b; }
+  .add-form { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .add-form input, .add-form select { flex:1; min-width:120px; }
+  #urlBox { display:flex; gap:8px; margin-bottom:18px; }
+  #urlBox input { flex:1; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333;
+           color:#fff; padding:10px 20px; border-radius:6px; display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>الإعدادات</h1>
+
+  <div id="urlBox">
+    <input id="apiUrlInput" placeholder="رابط Web App من Apps Script (.../exec)">
+    <button onclick="saveUrl()">حفظ الرابط</button>
+  </div>
+
+  <div class="card">
+    <h2>الجهات (Organizations)</h2>
+    <div id="orgList"></div>
+    <div class="add-form">
+      <input id="orgName" placeholder="اسم الجهة الجديدة">
+      <button onclick="addOrg()">إضافة</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>أعضاء مجلس الإدارة وأمانة السر</h2>
+    <div id="memberList"></div>
+    <div class="add-form">
+      <input id="memName" placeholder="الاسم">
+      <input id="memRole" placeholder="الصفة (كما تُطبع في المحضر)">
+      <select id="memType">
+        <option value="Chairman">رئيس المجلس</option>
+        <option value="Member">عضو</option>
+        <option value="Secretary">أمانة السر</option>
+      </select>
+      <button onclick="addMember()">إضافة</button>
+    </div>
+  </div>
+
+  <div id="listsContainer"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script>
+const STATIC_LISTS = [
+  { key: 'MemoType', title: 'أنواع المذكرات' },
+  { key: 'FollowUpStatus', title: 'حالات المتابعة' },
+  { key: 'SpecialItemType', title: 'بنود الرول الثابتة' },
+  { key: 'DecisionPhrase', title: 'جمل القرارات الجاهزة' },
+  { key: 'DocType', title: 'أنواع المستندات' }
+];
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+function saveUrl() {
+  API.setUrl(document.getElementById('apiUrlInput').value);
+  toast('تم حفظ الرابط');
+  loadAll();
+}
+
+async function loadAll() {
+  if (!API.getUrl()) return;
+  await loadOrganizations();
+  await loadMembers();
+  await loadStaticLists();
+}
+
+/* ---------------- الجهات ---------------- */
+async function loadOrganizations() {
+  const orgs = await API.call('listOrganizations');
+  const box = document.getElementById('orgList');
+  box.innerHTML = orgs.map(o => `
+    <div class="row">
+      <span class="label">${o.Name}</span>
+      <button class="danger" onclick="deactivateOrg('${o.OrgID}')">تعطيل</button>
+    </div>`).join('') || '<p class="muted">لا توجد جهات بعد.</p>';
+}
+async function addOrg() {
+  const name = document.getElementById('orgName').value.trim();
+  if (!name) return;
+  await API.call('addOrganization', { Name: name });
+  document.getElementById('orgName').value = '';
+  loadOrganizations();
+}
+async function deactivateOrg(id) {
+  await API.call('toggleOrganizationActive', { OrgID: id, IsActive: false });
+  loadOrganizations();
+}
+
+/* ---------------- أعضاء المجلس ---------------- */
+const TYPE_LABEL = { Chairman: 'رئيس', Member: 'عضو', Secretary: 'أمانة سر' };
+async function loadMembers() {
+  const members = await API.call('listBoardMembers');
+  const box = document.getElementById('memberList');
+  box.innerHTML = members.map(m => `
+    <div class="row">
+      <span class="label">${m.Name} <span class="muted">— ${m.Role} (${TYPE_LABEL[m.MemberType] || m.MemberType})</span></span>
+      <button class="danger" onclick="deactivateMember('${m.MemberID}')">تعطيل</button>
+    </div>`).join('') || '<p class="muted">لا يوجد أعضاء بعد.</p>';
+}
+async function addMember() {
+  const Name = document.getElementById('memName').value.trim();
+  const Role = document.getElementById('memRole').value.trim();
+  const MemberType = document.getElementById('memType').value;
+  if (!Name || !Role) return;
+  await API.call('addBoardMember', { Name, Role, MemberType });
+  document.getElementById('memName').value = '';
+  document.getElementById('memRole').value = '';
+  loadMembers();
+}
+async function deactivateMember(id) {
+  await API.call('toggleBoardMemberActive', { MemberID: id, IsActive: false });
+  loadMembers();
+}
+
+/* ---------------- القوائم الثابتة العامة ---------------- */
+async function loadStaticLists() {
+  const all = await API.call('listSettings');
+  const container = document.getElementById('listsContainer');
+  container.innerHTML = STATIC_LISTS.map(list => {
+    const items = all.filter(s => s.ListName === list.key);
+    const rows = items.map(i => `
+      <div class="row">
+        <span class="label">${i.Label}</span>
+        <button class="danger" onclick="deactivateSetting('${i.ItemID}', '${list.key}')">تعطيل</button>
+      </div>`).join('') || '<p class="muted">لا توجد عناصر بعد.</p>';
+    return `
+      <div class="card">
+        <h2>${list.title}</h2>
+        <div id="list_${list.key}">${rows}</div>
+        <div class="add-form">
+          <input id="input_${list.key}" placeholder="عنصر جديد">
+          <button onclick="addSetting('${list.key}')">إضافة</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+async function addSetting(listKey) {
+  const input = document.getElementById('input_' + listKey);
+  const label = input.value.trim();
+  if (!label) return;
+  await API.call('addSettingItem', { ListName: listKey, Label: label });
+  input.value = '';
+  loadStaticLists();
+}
+async function deactivateSetting(id) {
+  await API.call('toggleSettingActive', { ItemID: id, IsActive: false });
+  loadStaticLists();
+}
+
+/* ---------------- تشغيل أولي ---------------- */
+document.getElementById('apiUrlInput').value = API.getUrl();
+loadAll();
+</script>
+</body>
+</html>
