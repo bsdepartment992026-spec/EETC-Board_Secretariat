@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طباعة الرول</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* هوامش صفر = لا رؤوس ولا تذييلات من المتصفح. الإطار والهوامش نرسمها نحن داخل كل صفحة. */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E8EAED; font-family: 'Amiri', 'Traditional Arabic', serif; color: #000; }
+
+  .toolbar { position: sticky; top: 0; background: #1B2A41; color: #fff; padding: 10px 20px; display: flex;
+             gap: 14px; align-items: center; font-family: 'Cairo', sans-serif; font-size: 13px; z-index: 5; flex-wrap: wrap; }
+  .toolbar button { background: #A6802E; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .toolbar .hint { color: #C9CFD8; font-size: 12px; }
+
+  /* الصفحة: A4 ثابتة، بإطار رفيع يبعد 9مم عن الحافة */
+  .page { width: 210mm; height: 297mm; position: relative; background: #fff; margin: 16px auto; overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,.18); break-after: page; page-break-after: always; }
+  .page .frame { position: absolute; top: 9mm; right: 9mm; bottom: 9mm; left: 9mm; border: 0.35mm solid #000; }
+  .page .content { position: absolute; top: 16mm; right: 17mm; bottom: 17mm; left: 17mm; overflow: hidden; }
+
+  /* الغلاف */
+  .page.cover .content { display: flex; align-items: center; justify-content: center; }
+  .cover-box { width: 78%; border: 3px double #000; padding: 22mm 8mm; text-align: center; }
+  .cover-box .co { font-size: 19pt; font-weight: 700; line-height: 1.7; }
+  .cover-box .rule { width: 38%; border-top: 0.35mm solid #000; margin: 6mm auto; }
+  .cover-box .ln { font-size: 19pt; font-weight: 700; line-height: 2.1; }
+
+  /* رأس جدول الأعمال (يتكرر في كل صفحة) */
+  .hdr-co { font-size: 14pt; font-weight: 700; line-height: 1.6; text-align: right; }
+  .hdr-rule { width: 30%; border-top: 0.35mm solid #000; margin: 1.5mm 0 6mm 0; }
+  .hdr-ttl { text-align: center; font-size: 14pt; font-weight: 700; line-height: 1.65; }
+  .hdr-gap { height: 6mm; }
+
+  table.agenda { width: 100%; border-collapse: collapse; border: 0.3mm solid #000; }
+  th.colhead { font-size: 13pt; padding: 1mm 2mm; text-align: center; font-weight: 700; border-bottom: 0.3mm solid #000; }
+  th.no, td.no { width: 13mm; border-left: 0.3mm solid #000; text-align: center; }
+  td { padding: 4.5mm 4mm; font-size: 14pt; line-height: 1.85; vertical-align: top; text-align: right; }
+  td.no { padding: 4.5mm 1mm; font-weight: 700; }
+  td.center { text-align: center; }
+
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨️ طباعة</button>
+    <span id="status">جارٍ تجهيز الرول...</span>
+    <span class="hint">اختر الحجم A4 والهوامش "None/بدون". الصفحات تظهر هنا كما ستُطبع تمامًا.</span>
+  </div>
+  <div id="pages"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script>
+API.requireLogin();
+const MID = new URLSearchParams(location.search).get('id');
+const E = AR.esc;
+const pagesBox = document.getElementById('pages');
+
+function setting(list, label) {
+  const r = list.find(s => s.ListName === 'General' && s.Label === label);
+  return r ? r.Value : '';
+}
+
+function newPage(cls) {
+  const p = document.createElement('div');
+  p.className = 'page ' + (cls || '');
+  p.innerHTML = '<div class="frame"></div><div class="content"></div>';
+  pagesBox.appendChild(p);
+  return p;
+}
+
+async function build() {
+  const [roll, settings] = await Promise.all([
+    API.call('getMeetingRoll', { MeetingID: MID }),
+    API.call('listSettings')
+  ]);
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const m = roll.meeting;
+  const company = setting(settings, 'CompanyName') || 'الشركة';
+  const board = setting(settings, 'BoardName') || 'مجلس الإدارة';
+  const yr = AR.year(m.SessionDate);
+
+  /* ---- الغلاف ---- */
+  const cover = newPage('cover');
+  cover.querySelector('.content').innerHTML = `
+    <div class="cover-box">
+      <div class="co">${E(company)}</div>
+      <div class="co">${E(board)}</div>
+      <div class="rule"></div>
+      <div class="ln">الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${yr}</div>
+      <div class="ln">المنعقدة يوم ${AR.dayName(m.SessionDate)} الموافق</div>
+      <div class="ln">${AR.formatDate(m.SessionDate)}</div>
+      <div class="ln">الساعة ${m.SessionTime ? AR.timeWords(m.SessionTime) : AR.BLANK}</div>
+      <div class="rule"></div>
+    </div>`;
+
+  /* ---- صفحات جدول الأعمال: نوزّع الصفوف صفحة بصفحة ---- */
+  const headerHtml = `
+    <div class="hdr-co">${E(company)}</div>
+    <div class="hdr-co">${E(board)}</div>
+    <div class="hdr-rule"></div>
+    <div class="hdr-ttl">جدول أعمال</div>
+    <div class="hdr-ttl">الجلسة ${AR.ordinal(m.SessionNumber, true)} لسنة ${yr}</div>
+    <div class="hdr-ttl">المنعقدة بتاريخ ${AR.formatDate(m.SessionDate)}</div>
+    <div class="hdr-gap"></div>
+    <table class="agenda"><thead><tr><th class="colhead no">م</th><th class="colhead">الموضوع</th></tr></thead><tbody></tbody></table>`;
+
+  function newAgendaPage() {
+    const p = newPage('agenda');
+    const content = p.querySelector('.content');
+    content.innerHTML = headerHtml;
+    return { content, tbody: content.querySelector('tbody') };
+  }
+
+  const rows = roll.items.map(it => {
+    const isMemo = !!it.MemoID;
+    const text = isMemo ? it.Subject
+      : AR.composeSpecial(it.SpecialTemplate, { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+    const centered = !isMemo && !/\{ref/.test(it.SpecialTemplate || '');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="no">${isMemo ? it.RollNumber : '—'}</td><td class="${centered ? 'center' : ''}">${E(text)}</td>`;
+    return tr;
+  });
+  if (!rows.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="no"></td><td class="center">لا توجد بنود في الرول</td>';
+    rows.push(tr);
+  }
+
+  let cur = newAgendaPage();
+  rows.forEach(tr => {
+    cur.tbody.appendChild(tr);
+    const overflow = cur.content.scrollHeight > cur.content.clientHeight + 1;
+    if (overflow && cur.tbody.children.length > 1) {
+      cur.tbody.removeChild(tr);
+      cur = newAgendaPage();
+      cur.tbody.appendChild(tr);
+    }
+  });
+
+  document.title = 'رول الجلسة ' + (m.SessionNumber || '') + ' لسنة ' + yr;
+  const total = pagesBox.children.length;
+  document.getElementById('status').textContent = m.SessionNumber
+    ? `جاهز للطباعة — الجلسة ${m.SessionNumber} لسنة ${yr} (${total} صفحات)`
+    : 'تنبيه: الرول غير معتمد بعد (رقم الجلسة فارغ). اعتمده أولًا من شاشة بناء الرول.';
+}
+build().catch(e => { document.getElementById('status').textContent = 'خطأ: ' + e.message; });
+</script>
+</body>
+</html>

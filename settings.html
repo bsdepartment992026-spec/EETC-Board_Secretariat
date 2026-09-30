@@ -4,183 +4,310 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>الإعدادات — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family:'Segoe UI', Tahoma, sans-serif; background:#f5f6f8; margin:0; padding:24px 16px; }
-  .wrap { max-width:760px; margin:0 auto; }
-  h1 { font-size:20px; }
-  .card { background:#fff; border-radius:10px; padding:20px; margin-bottom:18px;
-          box-shadow:0 2px 8px rgba(0,0,0,.06); }
-  .card h2 { font-size:16px; margin:0 0 12px; border-bottom:1px solid #eee; padding-bottom:8px; }
-  .row { display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #f2f2f2; }
-  .row span.label { flex:1; }
-  .muted { color:#888; font-size:12px; }
-  input, select { padding:8px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
-  button { background:#1a73e8; color:#fff; border:none; padding:8px 14px; border-radius:6px;
-           cursor:pointer; font-size:13px; }
-  button.secondary { background:#eee; color:#333; }
-  button.danger { background:#fdecea; color:#c0392b; }
-  .add-form { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .add-form input, .add-form select { flex:1; min-width:120px; }
-  #urlBox { display:flex; gap:8px; margin-bottom:18px; }
-  #urlBox input { flex:1; }
-  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333;
-           color:#fff; padding:10px 20px; border-radius:6px; display:none; }
+  :root {
+    --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+    --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA;
+    --danger:#B3261E; --success:#1F7A4D;
+  }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+
+  .topbar { background:var(--ink); color:#fff; padding:14px 28px; display:flex;
+            justify-content:space-between; align-items:center; }
+  .topbar .brand { display:flex; align-items:center; gap:10px; font-size:14px; }
+  .topbar a.back { color:#D8C79A; text-decoration:none; font-size:13px; }
+
+  .shell { display:flex; max-width:1040px; margin:0 auto; min-height:calc(100vh - 54px); }
+
+  .sidebar { width:230px; flex:none; background:var(--surface); border-left:1px solid var(--line);
+             padding:22px 0; }
+  .sidebar .title { font-family:'Markazi Text', serif; font-weight:700; font-size:19px;
+                     padding:0 20px 16px; margin:0; border-bottom:1px solid var(--line); }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:11px 20px; cursor:pointer;
+              font-size:13.5px; color:var(--ink-soft); border-right:3px solid transparent; }
+  .nav-item:hover { background:var(--paper); }
+  .nav-item.active { background:var(--accent-soft); color:var(--ink); font-weight:600;
+                      border-right-color:var(--accent); }
+  .nav-item .n { margin-right:auto; font-size:11px; background:var(--line); color:var(--ink-soft);
+                 padding:1px 7px; border-radius:10px; }
+  .nav-item.active .n { background:var(--accent); color:#fff; }
+
+  .main { flex:1; padding:28px 32px; }
+  .main-header { margin-bottom:18px; }
+  .main-header h2 { font-family:'Markazi Text', serif; font-size:23px; margin:0 0 4px; }
+  .main-header p { font-size:13px; color:var(--ink-soft); margin:0; }
+
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+
+  .add-row { display:flex; gap:8px; padding:14px 18px; border-bottom:1px solid var(--line);
+             background:#FAFAF9; flex-wrap:wrap; }
+  .add-row input, .add-row select { flex:1; min-width:140px; padding:9px 11px; border:1px solid var(--line);
+             border-radius:5px; font-family:inherit; font-size:13.5px; background:#fff; }
+  .add-row input:focus, .add-row select:focus { outline:none; border-color:var(--accent); }
+  .add-row button { background:var(--ink); color:#fff; border:none; padding:9px 18px; border-radius:5px;
+                     cursor:pointer; font-size:13px; font-weight:600; white-space:nowrap; }
+  .add-row button:hover { background:#0F1A2C; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:10px 18px;
+       border-bottom:1px solid var(--line); }
+  td { padding:12px 18px; font-size:13.5px; border-bottom:1px solid var(--line); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#FAFAFA; }
+  .sub { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+
+  .status-dot { width:7px; height:7px; border-radius:50%; background:var(--success); display:inline-block;
+                margin-left:6px; }
+
+  .row-actions { text-align:left; }
+  .link-btn { background:none; border:none; color:var(--danger); font-size:12.5px; cursor:pointer;
+              font-family:inherit; padding:4px 8px; }
+  .link-btn:hover { text-decoration:underline; }
+
+  .empty { padding:32px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+  .hint { padding:10px 18px; font-size:12px; color:var(--ink-soft); background:#FBF8F0; border-bottom:1px solid var(--line); line-height:1.7; }
+  .tpl { font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.7; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>الإعدادات</h1>
-
-  <div id="urlBox">
-    <input id="apiUrlInput" placeholder="رابط Web App من Apps Script (.../exec)">
-    <button onclick="saveUrl()">حفظ الرابط</button>
+  <div class="topbar">
+    <div class="brand">⚙️ الإعدادات</div>
+    <a class="back" href="index.html">→ الرئيسية</a>
   </div>
 
-  <div class="card">
-    <h2>الجهات (Organizations)</h2>
-    <div id="orgList"></div>
-    <div class="add-form">
-      <input id="orgName" placeholder="اسم الجهة الجديدة">
-      <button onclick="addOrg()">إضافة</button>
+  <div class="shell">
+    <div class="sidebar">
+      <p class="title">القوائم</p>
+      <div id="navList"></div>
+    </div>
+    <div class="main">
+      <div class="main-header">
+        <h2 id="panelTitle"></h2>
+        <p id="panelDesc"></p>
+      </div>
+      <div class="panel" id="panel"></div>
     </div>
   </div>
-
-  <div class="card">
-    <h2>أعضاء مجلس الإدارة وأمانة السر</h2>
-    <div id="memberList"></div>
-    <div class="add-form">
-      <input id="memName" placeholder="الاسم">
-      <input id="memRole" placeholder="الصفة (كما تُطبع في المحضر)">
-      <select id="memType">
-        <option value="Chairman">رئيس المجلس</option>
-        <option value="Member">عضو</option>
-        <option value="Secretary">أمانة السر</option>
-      </select>
-      <button onclick="addMember()">إضافة</button>
-    </div>
-  </div>
-
-  <div id="listsContainer"></div>
-</div>
-
-<div class="toast" id="toast"></div>
 
 <script src="js/api.js"></script>
 <script>
-const STATIC_LISTS = [
-  { key: 'MemoType', title: 'أنواع المذكرات' },
-  { key: 'FollowUpStatus', title: 'حالات المتابعة' },
-  { key: 'SpecialItemType', title: 'بنود الرول الثابتة' },
-  { key: 'DecisionPhrase', title: 'جمل القرارات الجاهزة' },
-  { key: 'DocType', title: 'أنواع المستندات' }
+API.requireLogin();
+if (!API.hasPermission('ManageSettings')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
+/* كل قائمة معرّفة مرة واحدة: مفتاحها، عنوانها، ووصفها. */
+const CATEGORIES = [
+  { key:'Organizations', title:'الجهات', desc:'الجهات صاحبة المذكرات والجهات المسؤولة عن تنفيذ القرارات.' },
+  { key:'BoardMembers', title:'أعضاء المجلس وأمانة السر', desc:'تظهر أسماؤهم تلقائيًا في غلاف محضر كل جلسة.' },
+  { key:'MemoType', title:'أنواع المذكرات', desc:'جديدة / إعادة عرض / مؤجلة — وأي نوع تحتاجه.' },
+  { key:'FollowUpStatus', title:'حالات المتابعة', desc:'الحالات التي يمكن اختيارها عند تسجيل متابعة لقرار.' },
+  { key:'SpecialItemType', title:'بنود الرول الثابتة', desc:'مثل التصديق على المحضر أو الإحاطة بالقرارات.' },
+  { key:'DecisionPhrase', title:'جمل القرارات الجاهزة', desc:'نصوص تُستخدم بسرعة عند كتابة قرار جديد.' },
+  { key:'DocType', title:'أنواع المستندات', desc:'تصنيف الملفات المرفوعة في أرشيف النظام.' }
 ];
 
+let currentKey = CATEGORIES[0].key;
+let cache = { orgs: [], members: [], settings: [] };
+
 function toast(msg) {
-  const t = document.getElementById('toast');
+  // شريط تنبيه بسيط أسفل الصفحة (بدون مربع منبثق يعطّل الشاشة)
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1B2A41;color:#fff;padding:10px 20px;border-radius:5px;font-size:13px;z-index:10;';
+    document.body.appendChild(t);
+  }
   t.textContent = msg;
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2500);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 2200);
 }
 
-function saveUrl() {
-  API.setUrl(document.getElementById('apiUrlInput').value);
-  toast('تم حفظ الرابط');
-  loadAll();
+function renderNav() {
+  document.getElementById('navList').innerHTML = CATEGORIES.map(c => {
+    const count = countFor(c.key);
+    return `<div class="nav-item ${c.key === currentKey ? 'active' : ''}" onclick="selectCategory('${c.key}')">
+      ${c.title} <span class="n">${count}</span>
+    </div>`;
+  }).join('');
 }
 
-async function loadAll() {
-  if (!API.getUrl()) return;
-  await loadOrganizations();
-  await loadMembers();
-  await loadStaticLists();
+function countFor(key) {
+  if (key === 'Organizations') return cache.orgs.length;
+  if (key === 'BoardMembers') return cache.members.length;
+  return cache.settings.filter(s => s.ListName === key).length;
+}
+
+function selectCategory(key) {
+  currentKey = key;
+  renderNav();
+  renderPanel();
+}
+
+function renderPanel() {
+  const cat = CATEGORIES.find(c => c.key === currentKey);
+  document.getElementById('panelTitle').textContent = cat.title;
+  document.getElementById('panelDesc').textContent = cat.desc;
+
+  if (currentKey === 'Organizations') return renderOrganizations();
+  if (currentKey === 'BoardMembers') return renderMembers();
+  return renderStaticList(currentKey);
 }
 
 /* ---------------- الجهات ---------------- */
-async function loadOrganizations() {
-  const orgs = await API.call('listOrganizations');
-  const box = document.getElementById('orgList');
-  box.innerHTML = orgs.map(o => `
-    <div class="row">
-      <span class="label">${o.Name}</span>
-      <button class="danger" onclick="deactivateOrg('${o.OrgID}')">تعطيل</button>
-    </div>`).join('') || '<p class="muted">لا توجد جهات بعد.</p>';
+function renderOrganizations() {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div class="add-row">
+      <input id="newOrgName" placeholder="اسم الجهة الجديدة">
+      <button onclick="addOrg()">إضافة</button>
+    </div>
+    <table><tbody id="orgRows"></tbody></table>`;
+  fillOrgRows();
+}
+function fillOrgRows() {
+  const box = document.getElementById('orgRows');
+  box.innerHTML = cache.orgs.map(o => `
+    <tr>
+      <td><span class="status-dot"></span>${o.Name}</td>
+      <td class="row-actions"><button class="link-btn" onclick="deactivateOrg('${o.OrgID}')">تعطيل</button></td>
+    </tr>`).join('') || `<tr><td colspan="2" class="empty">لا توجد جهات بعد — أضف أول جهة من الأعلى.</td></tr>`;
 }
 async function addOrg() {
-  const name = document.getElementById('orgName').value.trim();
+  const input = document.getElementById('newOrgName');
+  const name = input.value.trim();
   if (!name) return;
   await API.call('addOrganization', { Name: name });
-  document.getElementById('orgName').value = '';
-  loadOrganizations();
+  input.value = '';
+  toast('تمت إضافة الجهة');
+  await reloadOrgs();
+  renderPanel(); renderNav();
 }
 async function deactivateOrg(id) {
   await API.call('toggleOrganizationActive', { OrgID: id, IsActive: false });
-  loadOrganizations();
+  toast('تم تعطيل الجهة');
+  await reloadOrgs();
+  renderPanel(); renderNav();
 }
 
 /* ---------------- أعضاء المجلس ---------------- */
-const TYPE_LABEL = { Chairman: 'رئيس', Member: 'عضو', Secretary: 'أمانة سر' };
-async function loadMembers() {
-  const members = await API.call('listBoardMembers');
-  const box = document.getElementById('memberList');
-  box.innerHTML = members.map(m => `
-    <div class="row">
-      <span class="label">${m.Name} <span class="muted">— ${m.Role} (${TYPE_LABEL[m.MemberType] || m.MemberType})</span></span>
-      <button class="danger" onclick="deactivateMember('${m.MemberID}')">تعطيل</button>
-    </div>`).join('') || '<p class="muted">لا يوجد أعضاء بعد.</p>';
+const TYPE_LABEL = { Chairman:'رئيس المجلس', Member:'عضو', Secretary:'أمانة سر' };
+function renderMembers() {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div class="add-row">
+      <input id="newMemName" placeholder="الاسم">
+      <input id="newMemRole" placeholder="الصفة (كما تُطبع في المحضر)">
+      <select id="newMemType">
+        <option value="Chairman">رئيس المجلس</option>
+        <option value="Member">عضو</option>
+        <option value="Secretary">أمانة سر</option>
+      </select>
+      <button onclick="addMember()">إضافة</button>
+    </div>
+    <table><tbody id="memberRows"></tbody></table>`;
+  fillMemberRows();
+}
+function fillMemberRows() {
+  const box = document.getElementById('memberRows');
+  box.innerHTML = cache.members.map(m => `
+    <tr>
+      <td>
+        <div>${m.Name}</div>
+        <div class="sub">${m.Role} · ${TYPE_LABEL[m.MemberType] || m.MemberType}</div>
+      </td>
+      <td class="row-actions"><button class="link-btn" onclick="deactivateMember('${m.MemberID}')">تعطيل</button></td>
+    </tr>`).join('') || `<tr><td colspan="2" class="empty">لا يوجد أعضاء بعد.</td></tr>`;
 }
 async function addMember() {
-  const Name = document.getElementById('memName').value.trim();
-  const Role = document.getElementById('memRole').value.trim();
-  const MemberType = document.getElementById('memType').value;
+  const Name = document.getElementById('newMemName').value.trim();
+  const Role = document.getElementById('newMemRole').value.trim();
+  const MemberType = document.getElementById('newMemType').value;
   if (!Name || !Role) return;
   await API.call('addBoardMember', { Name, Role, MemberType });
-  document.getElementById('memName').value = '';
-  document.getElementById('memRole').value = '';
-  loadMembers();
+  toast('تمت إضافة العضو');
+  await reloadMembers();
+  renderPanel(); renderNav();
 }
 async function deactivateMember(id) {
   await API.call('toggleBoardMemberActive', { MemberID: id, IsActive: false });
-  loadMembers();
+  toast('تم تعطيل العضو');
+  await reloadMembers();
+  renderPanel(); renderNav();
 }
 
 /* ---------------- القوائم الثابتة العامة ---------------- */
-async function loadStaticLists() {
-  const all = await API.call('listSettings');
-  const container = document.getElementById('listsContainer');
-  container.innerHTML = STATIC_LISTS.map(list => {
-    const items = all.filter(s => s.ListName === list.key);
-    const rows = items.map(i => `
-      <div class="row">
-        <span class="label">${i.Label}</span>
-        <button class="danger" onclick="deactivateSetting('${i.ItemID}', '${list.key}')">تعطيل</button>
-      </div>`).join('') || '<p class="muted">لا توجد عناصر بعد.</p>';
-    return `
-      <div class="card">
-        <h2>${list.title}</h2>
-        <div id="list_${list.key}">${rows}</div>
-        <div class="add-form">
-          <input id="input_${list.key}" placeholder="عنصر جديد">
-          <button onclick="addSetting('${list.key}')">إضافة</button>
-        </div>
-      </div>`;
-  }).join('');
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderStaticList(listKey) {
+  const isSpecial = listKey === 'SpecialItemType';
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div class="add-row">
+      <input id="newItemLabel" placeholder="عنصر جديد">
+      ${isSpecial ? '<input id="newItemValue" placeholder="قالب الصياغة (اختياري)">' : ''}
+      <button onclick="addStaticItem('${listKey}')">إضافة</button>
+    </div>
+    ${isSpecial ? '<div class="hint">قالب الصياغة هو النص الذي يُطبع في الرول. استخدم {refSession} و{refYear} و{refDate} ليُكتب رقم الجلسة المرجعية وسنتها وتاريخها تلقائيًا.</div>' : ''}
+    <table><tbody id="staticRows"></tbody></table>`;
+  fillStaticRows(listKey);
 }
-async function addSetting(listKey) {
-  const input = document.getElementById('input_' + listKey);
+function fillStaticRows(listKey) {
+  const isSpecial = listKey === 'SpecialItemType';
+  const items = cache.settings.filter(s => s.ListName === listKey);
+  document.getElementById('staticRows').innerHTML = items.map(i => `
+    <tr>
+      <td><span class="status-dot"></span>${esc(i.Label)}
+        ${isSpecial ? `<div class="tpl">${esc(i.Value) || 'بدون قالب'}</div>` : ''}</td>
+      <td class="row-actions">
+        ${isSpecial ? `<button class="link-btn" style="color:var(--accent)" onclick="editTemplate('${i.ItemID}')">تعديل القالب</button>` : ''}
+        <button class="link-btn" onclick="deactivateStatic('${i.ItemID}')">تعطيل</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="2" class="empty">لا توجد عناصر بعد.</td></tr>`;
+}
+async function addStaticItem(listKey) {
+  const input = document.getElementById('newItemLabel');
   const label = input.value.trim();
   if (!label) return;
-  await API.call('addSettingItem', { ListName: listKey, Label: label });
-  input.value = '';
-  loadStaticLists();
+  const valueInput = document.getElementById('newItemValue');
+  await API.call('addSettingItem', { ListName: listKey, Label: label, Value: valueInput ? valueInput.value.trim() : '' });
+  toast('تمت الإضافة');
+  await reloadSettings();
+  renderPanel(); renderNav();
 }
-async function deactivateSetting(id) {
+async function editTemplate(id) {
+  const item = cache.settings.find(s => s.ItemID === id);
+  const val = prompt('قالب الصياغة:', item.Value || '');
+  if (val === null) return;
+  await API.call('updateSettingItem', { ItemID: id, patch: { Value: val.trim() } });
+  toast('تم حفظ القالب');
+  await reloadSettings();
+  renderPanel();
+}
+async function deactivateStatic(id) {
   await API.call('toggleSettingActive', { ItemID: id, IsActive: false });
-  loadStaticLists();
+  toast('تم التعطيل');
+  await reloadSettings();
+  renderPanel(); renderNav();
 }
 
-/* ---------------- تشغيل أولي ---------------- */
-document.getElementById('apiUrlInput').value = API.getUrl();
-loadAll();
+/* ---------------- تحميل البيانات ---------------- */
+async function reloadOrgs() { cache.orgs = await API.call('listOrganizations'); }
+async function reloadMembers() { cache.members = await API.call('listBoardMembers'); }
+async function reloadSettings() { cache.settings = await API.call('listSettings'); }
+
+async function init() {
+  await Promise.all([reloadOrgs(), reloadMembers(), reloadSettings()]);
+  renderNav();
+  renderPanel();
+}
+init();
 </script>
 </body>
 </html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الجلسات — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --success:#1F7A4D; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .topbar { background:var(--ink); color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
+  .topbar a { color:#D8C79A; text-decoration:none; font-size:13px; }
+  .wrap { max-width:900px; margin:0 auto; padding:28px 24px; }
+  h2 { font-family:'Markazi Text', serif; font-size:23px; margin:0 0 4px; }
+  .lead { font-size:13px; color:var(--ink-soft); margin:0 0 18px; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+  .add-row { display:flex; gap:10px; padding:14px 18px; background:#FAFAF9; flex-wrap:wrap; align-items:flex-end; }
+  .add-row label { display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:4px; }
+  .add-row input { padding:9px 11px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13.5px; background:#fff; }
+  .add-row input:focus { outline:none; border-color:var(--accent); }
+  button.primary { background:var(--ink); color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; }
+  button.primary:hover { background:#0F1A2C; }
+  button:disabled { background:#9AA3AF !important; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:10px 18px; border-bottom:1px solid var(--line); }
+  td { padding:13px 18px; font-size:13.5px; border-bottom:1px solid var(--line); }
+  tr.row { cursor:pointer; }
+  tr.row:hover td { background:#FAFAF8; }
+  tr:last-child td { border-bottom:none; }
+  .num { font-family:'Markazi Text', serif; font-size:20px; font-weight:700; }
+  .badge { font-size:11px; padding:2px 10px; border-radius:10px; font-weight:600; }
+  .badge.draft { background:#EEF0F3; color:var(--ink-soft); }
+  .badge.ok { background:#E3F1E9; color:var(--success); }
+  .sub { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .empty { padding:34px; text-align:center; color:var(--ink-soft); font-size:13px; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:10; }
+</style>
+</head>
+<body>
+  <div class="topbar"><div>📋 الجلسات والرول</div><a href="index.html">→ الرئيسية</a></div>
+
+  <div class="wrap">
+    <h2>جلسة جديدة</h2>
+    <p class="lead">أنشئ الجلسة أولًا، ثم اختر لها المذكرات ورتّب الرول. رقم الجلسة يُعطى عند اعتماد الرول.</p>
+    <div class="panel">
+      <div class="add-row">
+        <div><label>تاريخ الجلسة</label><input type="date" id="newDate"></div>
+        <div><label>الساعة</label><input type="time" id="newTime" value="10:30"></div>
+        <button class="primary" id="createBtn" onclick="createMeeting()">إنشاء الجلسة</button>
+      </div>
+    </div>
+
+    <h2>الجلسات</h2>
+    <p class="lead">اضغط على أي جلسة لفتح الرول الخاص بها.</p>
+    <div class="panel"><table><thead><tr>
+      <th>رقم الجلسة</th><th>الموعد</th><th>البنود</th><th>الحالة</th>
+    </tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">جارٍ التحميل...</td></tr></tbody></table></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script>
+API.requireLogin();
+if (!API.hasPermission('ManageMeetings')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2600);
+}
+
+async function load() {
+  const list = await API.call('listMeetings');
+  const rows = document.getElementById('rows');
+  if (!list.length) { rows.innerHTML = '<tr><td colspan="4" class="empty">لا توجد جلسات بعد — أنشئ أول جلسة من الأعلى.</td></tr>'; return; }
+  rows.innerHTML = list.map(m => `
+    <tr class="row" onclick="location.href='roll.html?id=${encodeURIComponent(m.MeetingID)}'">
+      <td>${m.SessionNumber
+        ? `<span class="num">${m.SessionNumber}</span> <span class="sub">لسنة ${AR.year(m.SessionDate)}</span>`
+        : `<span class="sub">— بدون رقم —</span>`}
+        <div class="sub">${AR.esc(m.MeetingID)}</div></td>
+      <td>${AR.dayName(m.SessionDate)} ${AR.formatDate(m.SessionDate)}
+        <div class="sub">الساعة ${m.SessionTime ? AR.timeWords(m.SessionTime) : '—'}</div></td>
+      <td>${m.ItemCount} <span class="sub">(${m.MemoCount} مذكرة)</span></td>
+      <td><span class="badge ${m.SessionNumber ? 'ok' : 'draft'}">${m.SessionNumber ? 'رول معتمد' : 'مسودة'}</span></td>
+    </tr>`).join('');
+}
+
+async function createMeeting() {
+  const SessionDate = document.getElementById('newDate').value;
+  const SessionTime = document.getElementById('newTime').value;
+  if (!SessionDate) { toast('اختر تاريخ الجلسة أولًا'); return; }
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ الإنشاء...';
+  try {
+    const m = await API.call('createMeeting', { SessionDate, SessionTime });
+    location.href = 'roll.html?id=' + encodeURIComponent(m.MeetingID);
+  } catch (e) {
+    toast('خطأ: ' + e.message);
+    btn.disabled = false; btn.textContent = 'إنشاء الجلسة';
+  }
+}
+
+load().catch(e => toast('خطأ: ' + e.message));
+</script>
+</body>
+</html>

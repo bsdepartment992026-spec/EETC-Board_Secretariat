@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الرول — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --danger:#B3261E; --success:#1F7A4D; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .topbar { background:var(--ink); color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
+  .topbar a { color:#D8C79A; text-decoration:none; font-size:13px; }
+  .wrap { max-width:1120px; margin:0 auto; padding:24px; }
+
+  .head { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px 22px;
+          display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:20px; }
+  .head h1 { font-family:'Markazi Text', serif; font-size:26px; margin:0 0 4px; }
+  .head .sub { font-size:12.5px; color:var(--ink-soft); }
+  .badge { font-size:11px; padding:2px 10px; border-radius:10px; font-weight:600; margin-right:8px; vertical-align:middle; }
+  .badge.draft { background:#EEF0F3; color:var(--ink-soft); }
+  .badge.ok { background:#E3F1E9; color:var(--success); }
+  .when { display:flex; gap:8px; align-items:flex-end; margin-top:12px; flex-wrap:wrap; }
+  .when label { display:block; font-size:11px; color:var(--ink-soft); margin-bottom:3px; }
+  .when input { padding:7px 9px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13px; }
+  .actions { display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; }
+
+  button { font-family:inherit; cursor:pointer; border:none; border-radius:5px; font-size:13px; font-weight:600; padding:9px 16px; }
+  button.primary { background:var(--ink); color:#fff; } button.primary:hover { background:#0F1A2C; }
+  button.accent { background:var(--accent); color:#fff; } button.accent:hover { background:#8C6C25; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } button.ghost:hover { background:var(--paper); }
+  button.danger-ghost { background:#fff; color:var(--danger); border:1px solid #EFC9C6; }
+  button.small { padding:5px 11px; font-size:12px; }
+  button:disabled { opacity:.5; cursor:default; }
+
+  .cols { display:grid; grid-template-columns:1.35fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:860px) { .cols { grid-template-columns:1fr; } }
+  h2 { font-family:'Markazi Text', serif; font-size:20px; margin:0 0 4px; }
+  .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 10px; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+  .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  .item { display:flex; gap:14px; padding:14px 16px; border-bottom:1px solid var(--line); align-items:flex-start; }
+  .item:last-child { border-bottom:none; }
+  .item .no { flex:none; width:34px; height:34px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+              display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  .item.special .no { background:#EEF0F3; color:var(--ink-soft); }
+  .item .body { flex:1; min-width:0; }
+  .item .subj { font-size:13.5px; line-height:1.7; }
+  .item .meta { font-size:12px; color:var(--ink-soft); margin-top:5px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .item .ctrl { flex:none; display:flex; flex-direction:column; gap:4px; }
+  .item .ctrl button { background:#fff; border:1px solid var(--line); padding:3px 9px; font-size:12px; color:var(--ink-soft); }
+  .item .ctrl button:hover { background:var(--paper); }
+  .item .ctrl button.x { color:var(--danger); }
+  .lock { font-size:11px; color:var(--accent); }
+  select, .field { padding:6px 8px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:12.5px; background:#fff; }
+
+  .pool-item { padding:12px 16px; border-bottom:1px solid var(--line); }
+  .pool-item:last-child { border-bottom:none; }
+  .pool-item .subj { font-size:13px; line-height:1.65; }
+  .pool-item .row { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+
+  .special-box { padding:14px 16px; display:grid; gap:10px; }
+  .special-box label { display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:3px; }
+  .special-box select { width:100%; }
+
+  .modal-bg { position:fixed; inset:0; background:rgba(27,42,65,.45); display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
+  .modal { background:#fff; border-radius:8px; padding:26px; width:100%; max-width:380px; }
+  .modal h3 { font-family:'Markazi Text', serif; font-size:22px; margin:0 0 6px; }
+  .modal p { font-size:12.5px; color:var(--ink-soft); line-height:1.7; margin:0 0 14px; }
+  .modal input { width:100%; padding:11px; border:1px solid var(--line); border-radius:5px; font-size:20px; text-align:center; font-family:inherit; }
+  .modal .btns { display:flex; gap:8px; margin-top:16px; justify-content:flex-start; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:30; }
+</style>
+</head>
+<body>
+  <div class="topbar"><div>📋 بناء الرول</div><a href="meetings.html">→ الجلسات</a></div>
+
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <h1 id="title">جارٍ التحميل...</h1>
+        <div class="sub" id="subtitle"></div>
+        <div class="when">
+          <div><label>التاريخ</label><input type="date" id="dateInput"></div>
+          <div><label>الساعة</label><input type="time" id="timeInput"></div>
+          <button class="ghost small" onclick="saveWhen()">حفظ الموعد</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="accent" id="approveBtn" onclick="openApprove()">اعتماد الرول</button>
+        <button class="primary" onclick="printRoll()">🖨️ طباعة الرول</button>
+        <button class="danger-ghost" onclick="deleteMeeting()">حذف الجلسة</button>
+      </div>
+    </div>
+
+    <div class="cols">
+      <section>
+        <h2>الرول</h2>
+        <p class="lead">بترتيب العرض. استخدم ▲ ▼ لتغيير الترتيب، والأرقام تتحدّث تلقائيًا.</p>
+        <div class="panel" id="rollPanel"></div>
+      </section>
+
+      <aside>
+        <h2>المذكرات المتاحة</h2>
+        <p class="lead">مذكرات لم تدخل أي جلسة (أو عادت بعد حذفها من رول). لا تُحذف أبدًا.</p>
+        <div class="panel" id="poolPanel"></div>
+
+        <h2>بنود ثابتة</h2>
+        <p class="lead">تصديق على محضر، إحاطة بالقرارات، متابعة، ما يستجد.</p>
+        <div class="panel" id="specialPanel"></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h3 id="modalTitle">رقم الجلسة</h3>
+      <p id="modalText"></p>
+      <input type="number" min="1" id="numInput">
+      <div class="btns">
+        <button class="primary" onclick="confirmApprove()">تأكيد</button>
+        <button class="ghost" onclick="closeModal()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script>
+API.requireLogin();
+if (!API.hasPermission('ManageMeetings')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+const MID = new URLSearchParams(location.search).get('id');
+if (!MID) location.href = 'meetings.html';
+
+const S = { meeting: null, items: [], pool: [], orgs: {}, settings: [], meetings: [] };
+const E = AR.esc;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2800);
+}
+async function run(fn) {
+  try { await fn(); } catch (e) { toast('خطأ: ' + e.message); }
+}
+
+/* ---------------- تحميل ---------------- */
+async function loadAll() {
+  const [roll, pool, orgs, settings, meetings] = await Promise.all([
+    API.call('getMeetingRoll', { MeetingID: MID }),
+    API.call('listAvailableMemos'),
+    API.call('listOrganizations'),
+    API.call('listSettings'),
+    API.call('listMeetings')
+  ]);
+  S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.settings = settings; S.meetings = meetings;
+  S.orgs = {}; orgs.forEach(o => S.orgs[o.OrgID] = o.Name);
+  renderAll();
+}
+async function refresh() {
+  const [roll, pool, meetings] = await Promise.all([
+    API.call('getMeetingRoll', { MeetingID: MID }),
+    API.call('listAvailableMemos'),
+    API.call('listMeetings')
+  ]);
+  S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.meetings = meetings;
+  renderAll();
+}
+
+/* ---------------- عرض ---------------- */
+function memoTypes() { return S.settings.filter(s => s.ListName === 'MemoType'); }
+function specialTypes() { return S.settings.filter(s => s.ListName === 'SpecialItemType'); }
+
+function typeSelect(id, selected, onchange) {
+  return `<select id="${id}" ${onchange ? `onchange="${onchange}"` : ''}>` +
+    memoTypes().map(t => `<option value="${E(t.ItemID)}" ${t.ItemID === selected ? 'selected' : ''}>${E(t.Label)}</option>`).join('') +
+    `</select>`;
+}
+
+function renderAll() { renderHead(); renderRoll(); renderPool(); renderSpecial(); }
+
+function renderHead() {
+  const m = S.meeting;
+  document.getElementById('title').innerHTML = (m.SessionNumber
+    ? `الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${AR.year(m.SessionDate)}`
+    : 'جلسة جديدة') +
+    `<span class="badge ${m.SessionNumber ? 'ok' : 'draft'}">${m.SessionNumber ? 'رول معتمد — رقم ' + m.SessionNumber : 'مسودة'}</span>`;
+  document.getElementById('subtitle').textContent =
+    `${m.MeetingID} · ${AR.dayName(m.SessionDate)} ${AR.formatDate(m.SessionDate)} · الساعة ${m.SessionTime ? AR.timeWords(m.SessionTime) : '—'}`;
+  document.getElementById('dateInput').value = m.SessionDate || '';
+  document.getElementById('timeInput').value = m.SessionTime || '';
+  document.getElementById('approveBtn').textContent = m.SessionNumber ? 'تعديل رقم الجلسة' : 'اعتماد الرول';
+}
+
+function renderRoll() {
+  const box = document.getElementById('rollPanel');
+  if (!S.items.length) { box.innerHTML = '<div class="empty">الرول فارغ. أضف مذكرات من "المذكرات المتاحة" أو بنودًا ثابتة.</div>'; return; }
+  const last = S.items.length - 1;
+  box.innerHTML = S.items.map((it, i) => {
+    const isMemo = !!it.MemoID;
+    const subject = isMemo ? it.Subject
+      : AR.composeSpecial(it.SpecialTemplate, { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+    const meta = isMemo
+      ? `${it.OrgName ? E(it.OrgName) + ' ·' : ''} ${it.ChairmanOutgoingNo ? 'صادر رقم ' + E(it.ChairmanOutgoingNo) + ' ·' : ''} ${typeSelect('t_' + it.RollItemID, it.MemoTypeID, `changeType('${it.RollItemID}', this.value)`)}`
+      : `بند ثابت · ${E(it.SpecialLabel)}`;
+    return `<div class="item ${isMemo ? '' : 'special'}">
+      <div class="no">${it.RollNumber || '—'}</div>
+      <div class="body">
+        <div class="subj">${E(subject)}</div>
+        <div class="meta">${meta} ${it.HasDecision ? '<span class="lock">🔒 له قرار</span>' : ''}</div>
+      </div>
+      <div class="ctrl">
+        <button ${i === 0 ? 'disabled' : ''} onclick="move('${it.RollItemID}','up')">▲</button>
+        <button ${i === last ? 'disabled' : ''} onclick="move('${it.RollItemID}','down')">▼</button>
+        <button class="x" ${it.HasDecision ? 'disabled' : ''} onclick="removeItem('${it.RollItemID}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPool() {
+  const box = document.getElementById('poolPanel');
+  if (!S.pool.length) { box.innerHTML = '<div class="empty">لا توجد مذكرات متاحة. سجّلها من شاشة "المذكرات".</div>'; return; }
+  box.innerHTML = S.pool.map(m => `
+    <div class="pool-item">
+      <div class="subj">${E(m.Subject)}</div>
+      <div class="row">
+        <span class="lead" style="margin:0">${E(S.orgs[m.OrganizationID] || '')} ${m.ChairmanOutgoingNo ? '· صادر ' + E(m.ChairmanOutgoingNo) : ''}</span>
+      </div>
+      <div class="row">
+        ${typeSelect('pt_' + m.MemoID, '')}
+        <button class="primary small" onclick="addMemo('${m.MemoID}')">إضافة للرول</button>
+      </div>
+    </div>`).join('');
+}
+
+function refOptions() {
+  const cur = S.meeting;
+  const others = S.meetings.filter(x => x.MeetingID !== cur.MeetingID && x.SessionNumber);
+  const before = others.filter(x => String(x.SessionDate) < String(cur.SessionDate));
+  return (before.length ? before : others).concat(before.length ? others.filter(x => !before.includes(x)) : [])
+    .map(x => `<option value="${E(x.MeetingID)}">الجلسة ${x.SessionNumber} لسنة ${AR.year(x.SessionDate)} — ${AR.formatDate(x.SessionDate)}</option>`).join('');
+}
+
+function renderSpecial() {
+  const box = document.getElementById('specialPanel');
+  const types = specialTypes();
+  if (!types.length) { box.innerHTML = '<div class="empty">لا توجد أنواع بنود ثابتة في الإعدادات.</div>'; return; }
+  box.innerHTML = `<div class="special-box">
+    <div><label>نوع البند</label>
+      <select id="spType" onchange="onSpType()">${types.map(t => `<option value="${E(t.ItemID)}">${E(t.Label)}</option>`).join('')}</select></div>
+    <div id="spRefWrap"><label>الجلسة المرجعية</label>
+      <select id="spRef">${refOptions() || '<option value="">لا توجد جلسات معتمدة سابقة</option>'}</select></div>
+    <div><label>مكانه في الرول</label>
+      <select id="spPos"><option value="top">في الأول (بعد البنود الثابتة)</option><option value="bottom">في الآخر</option></select></div>
+    <button class="primary" onclick="addSpecial()">إضافة البند</button>
+  </div>`;
+  onSpType();
+}
+function onSpType() {
+  const t = specialTypes().find(x => x.ItemID === document.getElementById('spType').value);
+  document.getElementById('spRefWrap').style.display = t && /\{ref/.test(t.Value || '') ? 'block' : 'none';
+}
+
+/* ---------------- إجراءات ---------------- */
+function addMemo(memoId) {
+  run(async () => {
+    const MemoTypeID = document.getElementById('pt_' + memoId).value;
+    await API.call('addRollMemo', { MeetingID: MID, MemoID: memoId, MemoTypeID });
+    toast('تمت إضافة المذكرة للرول');
+    await refresh();
+  });
+}
+function addSpecial() {
+  run(async () => {
+    const SpecialTypeID = document.getElementById('spType').value;
+    const wrapVisible = document.getElementById('spRefWrap').style.display !== 'none';
+    await API.call('addRollSpecial', {
+      MeetingID: MID, SpecialTypeID,
+      RefMeetingID: wrapVisible ? document.getElementById('spRef').value : '',
+      Position: document.getElementById('spPos').value
+    });
+    toast('تمت إضافة البند');
+    await refresh();
+  });
+}
+function move(id, dir) { run(async () => { await API.call('moveRollItem', { RollItemID: id, Direction: dir }); await refresh(); }); }
+function removeItem(id) {
+  if (!confirm('حذف هذا البند من الرول؟ المذكرة ستعود لقائمة المتاحة ولن تُحذف.')) return;
+  run(async () => { await API.call('removeRollItem', { RollItemID: id }); toast('تم حذف البند'); await refresh(); });
+}
+function changeType(id, typeId) {
+  run(async () => { await API.call('updateRollItem', { RollItemID: id, MemoTypeID: typeId }); toast('تم تغيير النوع'); });
+}
+function saveWhen() {
+  run(async () => {
+    await API.call('updateMeeting', {
+      MeetingID: MID,
+      SessionDate: document.getElementById('dateInput').value,
+      SessionTime: document.getElementById('timeInput').value
+    });
+    toast('تم حفظ الموعد'); await refresh();
+  });
+}
+function deleteMeeting() {
+  if (!confirm('حذف هذه الجلسة؟ المذكرات المدرجة فيها ستعود لقائمة المتاحة.')) return;
+  run(async () => { await API.call('cancelMeeting', { MeetingID: MID }); location.href = 'meetings.html'; });
+}
+function printRoll() { window.open('roll-print.html?id=' + encodeURIComponent(MID), '_blank'); }
+
+/* ---------------- اعتماد الرول / رقم الجلسة ---------------- */
+function openApprove() {
+  run(async () => {
+    const m = S.meeting;
+    let value, text;
+    if (m.SessionNumber) {
+      value = m.SessionNumber;
+      text = 'رقم الجلسة الحالي. يمكنك تعديله (يجب ألا يتكرر داخل نفس السنة).';
+    } else {
+      const s = await API.call('suggestSessionNumber', { MeetingID: MID });
+      value = s.suggested;
+      text = `الرقم المقترح للجلسة لسنة ${AR.year(m.SessionDate)}. يمكنك تعديله قبل التأكيد. الرول يظل قابلًا للتعديل بعد الاعتماد.`;
+    }
+    document.getElementById('modalTitle').textContent = m.SessionNumber ? 'تعديل رقم الجلسة' : 'اعتماد الرول';
+    document.getElementById('modalText').textContent = text;
+    document.getElementById('numInput').value = value;
+    document.getElementById('modalBg').style.display = 'flex';
+  });
+}
+function closeModal() { document.getElementById('modalBg').style.display = 'none'; }
+function confirmApprove() {
+  run(async () => {
+    const SessionNumber = Number(document.getElementById('numInput').value);
+    await API.call('approveRoll', { MeetingID: MID, SessionNumber });
+    closeModal(); toast('تم اعتماد الرول — رقم الجلسة ' + SessionNumber);
+    await refresh();
+  });
+}
+
+run(loadAll);
+</script>
+</body>
+</html>
