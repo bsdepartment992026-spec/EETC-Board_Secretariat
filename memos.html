@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المذكرات — نظام دورة العمل</title>
+<style>
+  body { font-family:'Segoe UI', Tahoma, sans-serif; background:#f5f6f8; margin:0; padding:24px 16px; }
+  .wrap { max-width:720px; margin:0 auto; }
+  .back { color:#1a73e8; text-decoration:none; font-size:13px; }
+  h1 { font-size:20px; margin:10px 0 18px; }
+  .card { background:#fff; border-radius:10px; padding:20px; margin-bottom:18px;
+          box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .card h2 { font-size:16px; margin:0 0 14px; }
+  label { display:block; font-size:13px; color:#555; margin:10px 0 4px; }
+  input, select, textarea { width:100%; padding:9px; border:1px solid #ccc; border-radius:6px;
+                             font-family:inherit; box-sizing:border-box; }
+  textarea { min-height:60px; }
+  button { background:#1a73e8; color:#fff; border:none; padding:10px 20px; border-radius:6px;
+           cursor:pointer; font-size:14px; margin-top:16px; }
+  button:disabled { background:#aaa; cursor:default; }
+  .memo-row { padding:10px 0; border-bottom:1px solid #f0f0f0; }
+  .memo-row .subj { font-weight:600; font-size:14px; }
+  .memo-row .meta { font-size:12px; color:#888; margin-top:2px; }
+  .memo-row a { font-size:12px; color:#1a73e8; }
+  .muted { color:#888; font-size:13px; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#333;
+           color:#fff; padding:10px 20px; border-radius:6px; display:none; z-index:10; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">→ الرئيسية</a>
+  <h1>المذكرات</h1>
+
+  <div class="card">
+    <h2>تسجيل مذكرة جديدة</h2>
+
+    <label>الموضوع</label>
+    <input id="subject" placeholder="موضوع المذكرة">
+
+    <label>رقم صادر رئيس مجلس الإدارة (اختياري)</label>
+    <input id="chairmanNo" placeholder="مثال: 24">
+
+    <label>الجهة صاحبة المذكرة</label>
+    <select id="orgSelect"><option value="">جارٍ التحميل...</option></select>
+
+    <label>ملاحظات (اختياري)</label>
+    <textarea id="notes"></textarea>
+
+    <label>نسخة ممسوحة ضوئيًا من المذكرة (اختياري الآن، يمكن إضافتها لاحقًا)</label>
+    <input type="file" id="scanFile" accept=".pdf,.jpg,.jpeg,.png">
+
+    <button id="saveBtn" onclick="saveMemo()">حفظ المذكرة</button>
+  </div>
+
+  <div class="card">
+    <h2>المذكرات المتاحة (غير مُدرجة حاليًا في أي جلسة)</h2>
+    <div id="memoList" class="muted">جارٍ التحميل...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script>
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+async function loadOrganizations() {
+  const orgs = await API.call('listOrganizations');
+  const sel = document.getElementById('orgSelect');
+  sel.innerHTML = orgs.map(o => `<option value="${o.OrgID}">${o.Name}</option>`).join('')
+    || '<option value="">لا توجد جهات — أضِفها من الإعدادات أولًا</option>';
+}
+
+async function loadMemos() {
+  const memos = await API.call('listAvailableMemos');
+  const box = document.getElementById('memoList');
+  if (!memos.length) { box.innerHTML = '<p class="muted">لا توجد مذكرات متاحة بعد.</p>'; return; }
+  box.innerHTML = memos.map(m => `
+    <div class="memo-row">
+      <div class="subj">${m.Subject}</div>
+      <div class="meta">${m.MemoID} ${m.ChairmanOutgoingNo ? '· صادر رقم ' + m.ChairmanOutgoingNo : ''}</div>
+    </div>`).join('');
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveMemo() {
+  const subject = document.getElementById('subject').value.trim();
+  const orgId = document.getElementById('orgSelect').value;
+  const btn = document.getElementById('saveBtn');
+
+  if (!subject) { toast('اكتب موضوع المذكرة أولًا'); return; }
+  if (!orgId) { toast('اختر الجهة صاحبة المذكرة'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'جارٍ الحفظ...';
+
+  try {
+    const payload = {
+      Subject: subject,
+      ChairmanOutgoingNo: document.getElementById('chairmanNo').value.trim(),
+      OrganizationID: orgId,
+      Notes: document.getElementById('notes').value.trim()
+    };
+
+    const file = document.getElementById('scanFile').files[0];
+    if (file) {
+      payload.fileBase64 = await fileToBase64(file);
+      payload.fileName = file.name;
+      payload.mimeType = file.type || 'application/octet-stream';
+    }
+
+    await API.call('addMemo', payload);
+    toast('تم حفظ المذكرة بنجاح');
+
+    document.getElementById('subject').value = '';
+    document.getElementById('chairmanNo').value = '';
+    document.getElementById('notes').value = '';
+    document.getElementById('scanFile').value = '';
+    loadMemos();
+  } catch (e) {
+    toast('خطأ: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'حفظ المذكرة';
+  }
+}
+
+loadOrganizations();
+loadMemos();
+</script>
+</body>
+</html>
