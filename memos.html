@@ -64,6 +64,12 @@
 
 <script src="js/api.js"></script>
 <script>
+API.requireLogin();
+if (!API.hasPermission('ManageMemos')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -140,8 +146,11 @@ async function saveMemo() {
   }
 }
 
-loadOrganizations();
-loadMemos();
+loadOrganizations().catch(e => toast('خطأ في تحميل الجهات: ' + e.message));
+loadMemos().catch(e => {
+  document.getElementById('memoList').innerHTML =
+    `<p style="color:#c0392b">تعذّر تحميل المذكرات: ${e.message}</p>`;
+});
 </script>
 </body>
 </html>

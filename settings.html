@@ -303,9 +303,17 @@ async function reloadMembers() { cache.members = await API.call('listBoardMember
 async function reloadSettings() { cache.settings = await API.call('listSettings'); }
 
 async function init() {
-  await Promise.all([reloadOrgs(), reloadMembers(), reloadSettings()]);
-  renderNav();
-  renderPanel();
+  try {
+    await Promise.all([reloadOrgs(), reloadMembers(), reloadSettings()]);
+    renderNav();
+    renderPanel();
+  } catch (e) {
+    document.getElementById('panelTitle').textContent = 'حدث خطأ';
+    document.getElementById('panelDesc').textContent = '';
+    document.getElementById('panel').innerHTML =
+      `<div class="empty" style="color:#B3261E">تعذّر تحميل البيانات:<br>${e.message}<br><br>
+       تأكد أن كل ملفات Apps Script مرفوعة وأن آخر نسخة (Deploy) منشورة فعليًا.</div>`;
+  }
 }
 init();
 </script>
