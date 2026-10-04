@@ -70,12 +70,28 @@
   .empty { padding:32px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
   .hint { padding:10px 18px; font-size:12px; color:var(--ink-soft); background:#FBF8F0; border-bottom:1px solid var(--line); line-height:1.7; }
   .tpl { font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.7; }
+
+  .add-row.stacked { display:block; }
+  .add-row.stacked .fields { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .add-row.stacked .fields input, .add-row.stacked .fields select { flex:1; min-width:160px; padding:9px 11px;
+    border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13.5px; background:#fff; }
+  .perm-label { font-size:11.5px; color:var(--ink-soft); font-weight:600; margin:2px 0 8px; }
+  .perm-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:14px; }
+  @media (max-width:560px) { .perm-grid { grid-template-columns:1fr; } }
+  .perm-item { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); }
+  .user-perms { font-size:11.5px; color:var(--ink-soft); margin-top:3px; line-height:1.8; }
+  .edit-panel { background:#FAFAF9; border-top:1px dashed var(--line); padding:14px 18px; display:none; }
+  .edit-panel.open { display:block; }
+  .edit-panel .save-row { text-align:left; margin-top:6px; }
+  .btn-sm { background:var(--ink); color:#fff; border:none; padding:7px 16px; border-radius:5px;
+            cursor:pointer; font-size:12.5px; font-weight:600; font-family:inherit; }
+  .btn-sm:hover { background:#0F1A2C; }
 </style>
 </head>
 <body>
   <div class="topbar">
     <div class="brand">⚙️ الإعدادات</div>
-    <a class="back" href="index.html">→ الرئيسية</a>
+    <div class="top-nav"></div>
   </div>
 
   <div class="shell">
@@ -93,26 +109,31 @@
   </div>
 
 <script src="js/api.js"></script>
+<script src="js/nav.js"></script>
 <script>
 API.requireLogin();
-if (!API.hasPermission('ManageSettings')) {
+renderTopNav('settings');
+if (!API.hasPermission('ManageSettings') && !API.hasPermission('ManageUsers')) {
   alert('ليس لديك صلاحية الوصول لهذه الصفحة');
   window.location.href = 'index.html';
 }
 
-/* كل قائمة معرّفة مرة واحدة: مفتاحها، عنوانها، ووصفها. */
-const CATEGORIES = [
-  { key:'Organizations', title:'الجهات', desc:'الجهات صاحبة المذكرات والجهات المسؤولة عن تنفيذ القرارات.' },
-  { key:'BoardMembers', title:'أعضاء المجلس وأمانة السر', desc:'تظهر أسماؤهم تلقائيًا في غلاف محضر كل جلسة.' },
-  { key:'MemoType', title:'أنواع المذكرات', desc:'جديدة / إعادة عرض / مؤجلة — وأي نوع تحتاجه.' },
-  { key:'FollowUpStatus', title:'حالات المتابعة', desc:'الحالات التي يمكن اختيارها عند تسجيل متابعة لقرار.' },
-  { key:'SpecialItemType', title:'بنود الرول الثابتة', desc:'مثل التصديق على المحضر أو الإحاطة بالقرارات.' },
-  { key:'DecisionPhrase', title:'جمل القرارات الجاهزة', desc:'نصوص تُستخدم بسرعة عند كتابة قرار جديد.' },
-  { key:'DocType', title:'أنواع المستندات', desc:'تصنيف الملفات المرفوعة في أرشيف النظام.' }
+/* كل قائمة معرّفة مرة واحدة: مفتاحها، عنوانها، ووصفها، والصلاحية اللازمة لرؤيتها. */
+const CATEGORIES_ALL = [
+  { key:'Organizations', title:'الجهات', desc:'الجهات صاحبة المذكرات والجهات المسؤولة عن تنفيذ القرارات.', perm:'ManageSettings' },
+  { key:'BoardMembers', title:'أعضاء المجلس وأمانة السر', desc:'تظهر أسماؤهم تلقائيًا في غلاف محضر كل جلسة.', perm:'ManageSettings' },
+  { key:'MemoType', title:'أنواع المذكرات', desc:'جديدة / إعادة عرض / مؤجلة — وأي نوع تحتاجه.', perm:'ManageSettings' },
+  { key:'FollowUpStatus', title:'حالات المتابعة', desc:'الحالات التي يمكن اختيارها عند تسجيل متابعة لقرار.', perm:'ManageSettings' },
+  { key:'SpecialItemType', title:'بنود الرول الثابتة', desc:'مثل التصديق على المحضر أو الإحاطة بالقرارات.', perm:'ManageSettings' },
+  { key:'DecisionPhrase', title:'جمل القرارات الجاهزة', desc:'نصوص تُستخدم بسرعة عند كتابة قرار جديد.', perm:'ManageSettings' },
+  { key:'DocType', title:'أنواع المستندات', desc:'تصنيف الملفات المرفوعة في أرشيف النظام.', perm:'ManageSettings' },
+  { key:'Users', title:'المستخدمون والصلاحيات', desc:'إضافة المستخدمين وتحديد ما يصل إليه كل واحد منهم.', perm:'ManageUsers' }
 ];
+const CATEGORIES = CATEGORIES_ALL.filter(c => API.hasPermission(c.perm));
 
-let currentKey = CATEGORIES[0].key;
-let cache = { orgs: [], members: [], settings: [] };
+const urlCat = new URLSearchParams(location.search).get('cat');
+let currentKey = (urlCat && CATEGORIES.some(c => c.key === urlCat)) ? urlCat : (CATEGORIES[0] ? CATEGORIES[0].key : '');
+let cache = { orgs: [], members: [], settings: [], users: [], permissions: [] };
 
 function toast(msg) {
   // شريط تنبيه بسيط أسفل الصفحة (بدون مربع منبثق يعطّل الشاشة)
@@ -141,6 +162,7 @@ function renderNav() {
 function countFor(key) {
   if (key === 'Organizations') return cache.orgs.length;
   if (key === 'BoardMembers') return cache.members.length;
+  if (key === 'Users') return cache.users.length;
   return cache.settings.filter(s => s.ListName === key).length;
 }
 
@@ -157,6 +179,7 @@ function renderPanel() {
 
   if (currentKey === 'Organizations') return renderOrganizations();
   if (currentKey === 'BoardMembers') return renderMembers();
+  if (currentKey === 'Users') return renderUsers();
   return renderStaticList(currentKey);
 }
 
@@ -242,6 +265,115 @@ async function deactivateMember(id) {
   renderPanel(); renderNav();
 }
 
+/* ---------------- المستخدمون والصلاحيات ---------------- */
+function permCheckboxes(idPrefix, checkedKeys) {
+  checkedKeys = checkedKeys || [];
+  return `<div class="perm-label">الصلاحيات</div><div class="perm-grid">` +
+    cache.permissions.map(p => `
+      <label class="perm-item">
+        <input type="checkbox" id="${idPrefix}_${p.key}" value="${p.key}" ${checkedKeys.includes(p.key) ? 'checked' : ''}>
+        ${esc(p.label)}
+      </label>`).join('') + `</div>`;
+}
+function orgOptions(selected) {
+  return `<option value="">بدون تقييد</option>` +
+    cache.orgs.map(o => `<option value="${o.OrgID}" ${o.OrgID === selected ? 'selected' : ''}>${esc(o.Name)}</option>`).join('');
+}
+
+function renderUsers() {
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div class="add-row stacked">
+      <div class="fields">
+        <input id="newUserFullName" placeholder="الاسم الكامل">
+        <input id="newUserUsername" placeholder="اسم المستخدم (لتسجيل الدخول)">
+        <input id="newUserPassword" type="password" placeholder="كلمة سر مبدئية (6 أحرف فأكثر)">
+        <select id="newUserOrgScope">${orgOptions('')}</select>
+      </div>
+      ${permCheckboxes('new')}
+      <button onclick="addUser()">إضافة المستخدم</button>
+    </div>
+    <table><tbody id="userRows"></tbody></table>`;
+  fillUserRows();
+}
+
+function fillUserRows() {
+  const box = document.getElementById('userRows');
+  box.innerHTML = cache.users.map(u => {
+    const labels = u.Permissions.map(k => {
+      const p = cache.permissions.find(x => x.key === k);
+      return p ? p.label : k;
+    });
+    return `
+    <tr>
+      <td>
+        <div>${esc(u.FullName)} <span class="sub">(${esc(u.Username)})</span></div>
+        <div class="user-perms">${labels.join(' · ') || 'بدون صلاحيات'}</div>
+      </td>
+      <td class="row-actions">
+        <button class="link-btn" style="color:var(--accent)" onclick="toggleEditUser('${u.UserID}')">تعديل الصلاحيات</button>
+        <button class="link-btn" style="color:var(--accent)" onclick="resetPassword('${u.UserID}')">كلمة سر جديدة</button>
+        <button class="link-btn" onclick="deactivateUser('${u.UserID}')">تعطيل</button>
+      </td>
+    </tr>
+    <tr id="edit_row_${u.UserID}"><td colspan="2" style="padding:0">
+      <div class="edit-panel" id="edit_panel_${u.UserID}">
+        ${permCheckboxes('edit_' + u.UserID, u.Permissions)}
+        <div class="save-row">
+          <button class="btn-sm" onclick="saveUserPerms('${u.UserID}')">حفظ الصلاحيات</button>
+        </div>
+      </div>
+    </td></tr>`;
+  }).join('') || `<tr><td colspan="2" class="empty">لا يوجد مستخدمون بعد.</td></tr>`;
+}
+
+function toggleEditUser(userId) {
+  document.getElementById('edit_panel_' + userId).classList.toggle('open');
+}
+
+async function addUser() {
+  const FullName = document.getElementById('newUserFullName').value.trim();
+  const Username = document.getElementById('newUserUsername').value.trim();
+  const Password = document.getElementById('newUserPassword').value;
+  const OrgScope = document.getElementById('newUserOrgScope').value;
+  const Permissions = cache.permissions
+    .map(p => p.key)
+    .filter(k => document.getElementById('new_' + k).checked);
+
+  if (!FullName || !Username || !Password) { toast('املأ الاسم واسم المستخدم وكلمة السر'); return; }
+  if (Password.length < 6) { toast('كلمة السر قصيرة، 6 أحرف على الأقل'); return; }
+
+  await API.call('addUser', { FullName, Username, Password, OrgScope, Permissions });
+  toast('تمت إضافة المستخدم');
+  await reloadUsers();
+  renderPanel(); renderNav();
+}
+
+async function saveUserPerms(userId) {
+  const Permissions = cache.permissions
+    .map(p => p.key)
+    .filter(k => document.getElementById('edit_' + userId + '_' + k).checked);
+  await API.call('updateUserPermissions', { UserID: userId, Permissions });
+  toast('تم حفظ الصلاحيات');
+  await reloadUsers();
+  renderPanel();
+}
+
+async function resetPassword(userId) {
+  const newPass = prompt('كلمة السر الجديدة لهذا المستخدم (6 أحرف على الأقل):');
+  if (!newPass || newPass.trim().length < 6) return;
+  await API.call('resetUserPassword', { UserID: userId, NewPassword: newPass.trim() });
+  toast('تم تغيير كلمة السر');
+}
+
+async function deactivateUser(userId) {
+  if (!confirm('تعطيل هذا الحساب؟ لن يستطيع صاحبه تسجيل الدخول بعدها.')) return;
+  await API.call('toggleUserActive', { UserID: userId, IsActive: false });
+  toast('تم تعطيل الحساب');
+  await reloadUsers();
+  renderPanel(); renderNav();
+}
+
 /* ---------------- القوائم الثابتة العامة ---------------- */
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -301,12 +433,18 @@ async function deactivateStatic(id) {
 async function reloadOrgs() { cache.orgs = await API.call('listOrganizations'); }
 async function reloadMembers() { cache.members = await API.call('listBoardMembers'); }
 async function reloadSettings() { cache.settings = await API.call('listSettings'); }
+async function reloadUsers() { cache.users = await API.call('listUsers'); }
+async function reloadPermissions() { cache.permissions = await API.call('listPermissionsCatalog'); }
 
 async function init() {
   try {
-    await Promise.all([reloadOrgs(), reloadMembers(), reloadSettings()]);
+    const tasks = [reloadOrgs(), reloadMembers(), reloadSettings()];
+    if (API.hasPermission('ManageUsers')) tasks.push(reloadUsers(), reloadPermissions());
+    await Promise.all(tasks);
+    if (!currentKey && CATEGORIES.length) currentKey = CATEGORIES[0].key;
     renderNav();
-    renderPanel();
+    if (currentKey) renderPanel();
+    else document.getElementById('panel').innerHTML = '<div class="empty">لا توجد قوائم متاحة لصلاحياتك الحالية.</div>';
   } catch (e) {
     document.getElementById('panelTitle').textContent = 'حدث خطأ';
     document.getElementById('panelDesc').textContent = '';

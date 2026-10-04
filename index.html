@@ -3,39 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>نظام دورة العمل — مجلس الإدارة</title>
+<title>منظومة الإدارة العامة لشئون مجلس الإدارة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
-          --accent:#A6802E; --line:#E2E5EA; }
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; }
   * { box-sizing:border-box; }
   body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; padding:0; color:var(--ink); }
-  .topbar { background:var(--ink); color:#fff; padding:16px 28px; display:flex;
-            justify-content:space-between; align-items:center; }
-  .topbar .brand { display:flex; align-items:center; gap:10px; }
-  .topbar .mark { width:32px; height:32px; border-radius:50%; background:var(--accent);
-                  display:flex; align-items:center; justify-content:center;
-                  font-family:'Markazi Text', serif; font-weight:700; }
-  .topbar h1 { font-family:'Markazi Text', serif; font-size:18px; margin:0; font-weight:600; }
-  .topbar .user { font-size:13px; text-align:left; }
-  .topbar .user a { color:#D8C79A; cursor:pointer; text-decoration:none; }
 
-  .wrap { max-width:920px; margin:0 auto; padding:32px 24px; }
+  .masthead { background:var(--ink); color:#fff; padding:22px 28px 18px; text-align:center; }
+  .masthead .logo { width:52px; height:52px; border-radius:50%; background:var(--accent); color:#fff;
+                     display:flex; align-items:center; justify-content:center; margin:0 auto 10px;
+                     font-family:'Markazi Text', serif; font-weight:700; font-size:22px; }
+  .masthead h1 { font-family:'Markazi Text', serif; font-size:21px; margin:0; font-weight:700; }
+  .masthead .user { font-size:12px; color:#C9CFD8; margin-top:8px; }
+  .masthead .user a { color:#D8C79A; cursor:pointer; text-decoration:none; }
+  .masthead .top-nav { display:flex; justify-content:center; gap:2px; margin-top:12px; }
+
+  .wrap { max-width:960px; margin:0 auto; padding:0 24px 32px; }
+
+  /* الداشبورد */
+  .dash { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background:var(--line);
+          border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-top:-18px;
+          box-shadow:0 4px 14px rgba(27,42,65,.08); }
+  @media (max-width:640px) { .dash { grid-template-columns:repeat(2, 1fr); } }
+  .dash .cell { background:var(--surface); padding:16px; text-align:center; }
+  .dash .cell .num { font-family:'Markazi Text', serif; font-size:28px; font-weight:700; color:var(--accent); }
+  .dash .cell .lbl { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+
+  /* البحث */
+  .search-bar { background:var(--surface); border:1px solid var(--line); border-radius:6px;
+                padding:14px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:16px 0 24px; }
+  .search-bar .t { font-size:12.5px; color:var(--ink-soft); flex:none; }
+  .search-bar input { padding:8px 10px; border:1px solid var(--line); border-radius:5px; font-family:inherit;
+                       font-size:13px; width:130px; }
+  .search-bar button { background:var(--ink); color:#fff; border:none; padding:8px 18px; border-radius:5px;
+                        cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; }
+  .search-results { margin-top:10px; font-size:13px; }
+  .search-results a { display:block; padding:8px 10px; border-top:1px solid var(--line); color:var(--ink); text-decoration:none; }
+  .search-results a:hover { background:var(--paper); }
+
   .section-title { font-size:13px; color:var(--ink-soft); font-weight:600; margin:0 0 14px; }
-
   .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:1px; background:var(--line);
           border:1px solid var(--line); border-radius:6px; overflow:hidden; }
   @media (max-width:720px) { .grid { grid-template-columns:1fr 1fr; } }
   @media (max-width:460px) { .grid { grid-template-columns:1fr; } }
 
-  .tile { background:var(--surface); padding:22px; text-decoration:none; color:var(--ink);
-          display:block; transition:background .12s; position:relative; }
+  .tile { background:var(--surface); padding:22px; text-decoration:none; color:var(--ink); display:block; }
   .tile:hover { background:#FAFAF8; }
   .tile .icon { font-size:22px; margin-bottom:10px; display:block; }
   .tile .name { font-weight:600; font-size:14.5px; }
   .tile .desc { font-size:12px; color:var(--ink-soft); margin-top:5px; line-height:1.6; }
-
   .tile.disabled { color:#B7BEC7; pointer-events:none; background:#FAFAFA; }
   .tile.disabled .desc { color:#C3C9D0; }
   .tile .badge { font-size:10.5px; color:var(--accent); margin-top:8px; font-weight:600; }
@@ -43,107 +62,134 @@
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <div class="mark">ب</div>
-      <h1>نظام دورة العمل</h1>
-    </div>
+  <div class="masthead">
+    <div class="logo">ب</div>
+    <h1>منظومة الإدارة العامة لشئون مجلس الإدارة</h1>
     <div class="user" id="userBox"></div>
+    <div class="top-nav" id="topNavHome"></div>
   </div>
 
   <div class="wrap">
-    <p class="section-title">الشاشات</p>
+    <div class="dash" id="dash">
+      <div class="cell"><div class="num">—</div><div class="lbl">جارٍ التحميل</div></div>
+    </div>
+
+    <div class="search-bar">
+      <span class="t">بحث سريع:</span>
+      <input id="qRoll" placeholder="رقم المذكرة في الرول">
+      <input id="qSession" placeholder="رقم الجلسة">
+      <input id="qYear" placeholder="السنة">
+      <button onclick="runSearch()">بحث</button>
+    </div>
+    <div class="search-results" id="searchResults"></div>
+
     <div class="grid" id="grid">
-      <a class="tile" href="settings.html" data-perm="ManageSettings">
-        <span class="icon">⚙️</span>
-        <div class="name">الإعدادات</div>
-        <div class="desc">الجهات، أنواع المذكرات، الأعضاء، القوائم الثابتة</div>
-      </a>
-
-      <a class="tile" href="users.html" data-perm="ManageUsers">
-        <span class="icon">👤</span>
-        <div class="name">المستخدمون</div>
-        <div class="desc">إضافة المستخدمين وتحديد صلاحياتهم</div>
-      </a>
-
       <a class="tile" href="memos.html" data-perm="ManageMemos">
         <span class="icon">📄</span>
         <div class="name">المذكرات</div>
         <div class="desc">تسجيل المذكرات الواردة ورفع صورها</div>
       </a>
-
       <a class="tile" href="meetings.html" data-perm="ManageMeetings">
         <span class="icon">📋</span>
         <div class="name">الجلسات والرول</div>
         <div class="desc">إنشاء جلسة، ترتيب الرول، الطباعة</div>
       </a>
-
-      <a class="tile disabled" href="#" data-perm="ManageMinutes">
-        <span class="icon">📝</span>
-        <div class="name">محضر الجلسة</div>
-        <div class="desc">تسجيل المداولات وربطها بالجلسة</div>
-        <div class="badge">قريبًا</div>
-      </a>
-
       <a class="tile disabled" href="#" data-perm="ManageDecisions">
         <span class="icon">✅</span>
         <div class="name">القرارات</div>
         <div class="desc">جدول القرارات والقرارات التنفيذية</div>
         <div class="badge">قريبًا</div>
       </a>
-
       <a class="tile disabled" href="#" data-perm="ManageFollowUps">
         <span class="icon">🔄</span>
         <div class="name">المتابعة</div>
         <div class="desc">متابعة تنفيذ القرارات</div>
         <div class="badge">قريبًا</div>
       </a>
-
       <a class="tile disabled" href="#" data-perm="ViewDashboardSearch">
-        <span class="icon">🔍</span>
-        <div class="name">البحث</div>
-        <div class="desc">البحث في المذكرات والقرارات والجلسات</div>
+        <span class="icon">📁</span>
+        <div class="name">الأرشيف</div>
+        <div class="desc">بحث متقدم في كل البيانات والمستندات</div>
         <div class="badge">قريبًا</div>
       </a>
-
-      <a class="tile disabled" href="#" data-perm="ViewDashboardSearch">
-        <span class="icon">📊</span>
-        <div class="name">لوحة المعلومات</div>
-        <div class="desc">أرقام وإحصائيات سريعة</div>
-        <div class="badge">قريبًا</div>
+      <a class="tile" href="settings.html" data-perm-any="ManageSettings,ManageUsers">
+        <span class="icon">⚙️</span>
+        <div class="name">الإعدادات</div>
+        <div class="desc">الجهات، الأعضاء، القوائم، المستخدمون</div>
       </a>
     </div>
   </div>
 
 <script src="js/api.js"></script>
+<script src="js/nav.js"></script>
 <script>
 API.requireLogin();
+renderTopNav('home');
+
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function applyPermissions() {
   const user = API.getUser();
   document.querySelectorAll('.tile[data-perm]').forEach(tile => {
     const perm = tile.getAttribute('data-perm');
-    if (!user || !user.Permissions.includes(perm)) {
-      tile.classList.add('disabled');
-      if (!tile.querySelector('.badge')) {
-        const b = document.createElement('div');
-        b.className = 'badge';
-        b.textContent = 'بدون صلاحية';
-        tile.appendChild(b);
-      }
-    }
+    if (!user || !user.Permissions.includes(perm)) markDisabled(tile);
   });
+  document.querySelectorAll('.tile[data-perm-any]').forEach(tile => {
+    const perms = tile.getAttribute('data-perm-any').split(',');
+    const ok = user && perms.some(p => user.Permissions.includes(p));
+    if (!ok) markDisabled(tile);
+  });
+}
+function markDisabled(tile) {
+  tile.classList.add('disabled');
+  if (!tile.querySelector('.badge')) {
+    const b = document.createElement('div');
+    b.className = 'badge'; b.textContent = 'بدون صلاحية';
+    tile.appendChild(b);
+  }
 }
 
 function renderUserBox() {
   const user = API.getUser();
   const box = document.getElementById('userBox');
   if (!user) return;
-  box.innerHTML = `${user.FullName} &nbsp;·&nbsp; <a onclick="API.logout()">تسجيل الخروج</a>`;
+  box.innerHTML = `${esc(user.FullName)} &nbsp;·&nbsp; <a onclick="API.logout()">تسجيل الخروج</a>`;
+}
+
+async function loadDashboard() {
+  try {
+    const d = await API.call('getDashboardSummary');
+    document.getElementById('dash').innerHTML = `
+      <div class="cell"><div class="num">${d.meetingsCount}</div><div class="lbl">الجلسات</div></div>
+      <div class="cell"><div class="num">${d.memosCount}</div><div class="lbl">إجمالي المذكرات</div></div>
+      <div class="cell"><div class="num">${d.availableMemosCount}</div><div class="lbl">مذكرات متاحة</div></div>
+      <div class="cell"><div class="num">${d.decisionsCount || '—'}</div><div class="lbl">القرارات</div></div>`;
+  } catch (e) {
+    document.getElementById('dash').innerHTML = `<div class="cell" style="grid-column:1/-1;color:#B3261E">تعذّر تحميل الأرقام: ${esc(e.message)}</div>`;
+  }
+}
+
+async function runSearch() {
+  const box = document.getElementById('searchResults');
+  box.textContent = 'جارٍ البحث...';
+  try {
+    const results = await API.call('quickSearch', {
+      RollNumber: document.getElementById('qRoll').value.trim(),
+      SessionNumber: document.getElementById('qSession').value.trim(),
+      Year: document.getElementById('qYear').value.trim()
+    });
+    box.innerHTML = results.length
+      ? results.map(r => `<a href="roll.html?id=${encodeURIComponent(r.MeetingID)}">
+          #${r.RollNumber || '-'} — ${esc(r.Subject)} <span style="color:var(--ink-soft)">(الجلسة ${r.SessionNumber || '—'})</span></a>`).join('')
+      : '<div style="color:var(--ink-soft);padding:6px 0">لا توجد نتائج مطابقة.</div>';
+  } catch (e) {
+    box.innerHTML = `<div style="color:#B3261E">خطأ: ${esc(e.message)}</div>`;
+  }
 }
 
 renderUserBox();
 applyPermissions();
+loadDashboard();
 </script>
 </body>
 </html>
