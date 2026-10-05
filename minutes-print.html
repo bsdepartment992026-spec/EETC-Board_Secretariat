@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طباعة المحضر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E8EAED; font-family: 'Times New Roman', 'Traditional Arabic', serif; color: #000; font-weight: 700; }
+
+  .toolbar { position: sticky; top: 0; background: #1B2A41; color: #fff; padding: 10px 20px; display: flex;
+             gap: 14px; align-items: center; font-family: 'Cairo', sans-serif; font-size: 13px; z-index: 5; flex-wrap: wrap; }
+  .toolbar button { background: #A6802E; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .toolbar .hint { color: #C9CFD8; font-size: 12px; }
+
+  .page { width: 210mm; height: 297mm; position: relative; background: #fff; margin: 16px auto; overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,.18); break-after: page; page-break-after: always; }
+  .page .frame { position: absolute; top: 9mm; right: 9mm; bottom: 9mm; left: 9mm; border: 0.35mm solid #000; }
+  .page .content { position: absolute; top: 14mm; right: 16mm; bottom: 14mm; left: 16mm; overflow: hidden; }
+  .page .pageno { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 11pt; font-family:'Amiri'; }
+
+  .cover .content { display: flex; align-items: center; justify-content: center; }
+  .cover-box { width: 78%; border: 3px double #000; padding: 20mm 8mm; text-align: center; }
+  .cover-box .co { font-size: 14pt; font-weight: 700; line-height: 1.7; text-align: center; }
+  .cover-box .rule { width: 36%; border-top: 0.35mm solid #000; margin: 5mm auto; }
+  .cover-box .ln { font-size: 13pt; font-weight: 700; line-height: 2; }
+
+  .op-co { font-size: 14pt; font-weight: 700; text-align: center; line-height: 1.5; width: 58%; margin: 0 0 0 auto; }
+  .op-rule { width: 30%; border-top: 0.35mm solid #000; margin: 1.5mm 0 5mm auto; }
+  .op-para { font-size: 13pt; font-weight: 700; line-height: 2.1; text-align: justify; margin: 3mm 0; }
+  .op-note { font-size: 13pt; font-weight: 700; text-align: center; margin: 2mm 0; }
+
+  .item-title { font-size: 13pt; font-weight: 700; line-height: 1.9; margin: 5mm 0 2mm; }
+  .speaker { font-size: 13pt; font-weight: 700; margin-top: 2.5mm; }
+  .speech { font-size: 13pt; font-weight: 700; line-height: 1.95; margin: 0.5mm 0 2.5mm; text-align: justify; }
+  .decision-hdr { font-size: 13pt; font-weight: 700; text-align: center; margin: 3mm 0 1mm; }
+  .decision-txt { font-size: 13pt; font-weight: 700; line-height: 1.95; text-align: justify; border-top: 0.3mm solid #000;
+                  border-bottom: 0.3mm solid #000; padding: 2mm 1mm; }
+  .decision-txt.empty { color: #777; font-style: italic; border-style: dashed; font-weight: 400; }
+
+  .closing { font-size: 13pt; font-weight: 700; line-height: 2; text-align: center; margin-top: 8mm; }
+  .sig-row { display: flex; justify-content: space-between; margin-top: 14mm; font-size: 13pt; font-weight: 700; }
+
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨️ طباعة</button>
+    <span id="status">جارٍ تجهيز المحضر...</span>
+    <span class="hint">اختر A4 وبدون هوامش/رؤوس المتصفح لطباعة نظيفة.</span>
+  </div>
+  <div id="pages"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script>
+API.requireLogin();
+const MID = new URLSearchParams(location.search).get('id');
+const E = AR.esc;
+const pagesBox = document.getElementById('pages');
+let pageCounter = 0;
+
+function setting(list, label) {
+  const r = list.find(s => s.ListName === 'General' && s.Label === label);
+  return r ? r.Value : '';
+}
+function newPage(cls, numbered) {
+  const p = document.createElement('div');
+  p.className = 'page ' + (cls || '');
+  pageCounter++;
+  p.innerHTML = '<div class="frame"></div><div class="content"></div>' +
+    (numbered ? `<div class="pageno">- ${pageCounter} -</div>` : '');
+  pagesBox.appendChild(p);
+  return p;
+}
+
+async function build() {
+  const [data, settings] = await Promise.all([
+    API.call('getMeetingMinutes', { MeetingID: MID }),
+    API.call('listSettings')
+  ]);
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const m = data.meeting;
+  const company = setting(settings, 'CompanyName') || 'الشركة';
+  const board = setting(settings, 'BoardName') || 'مجلس الإدارة';
+  const yr = AR.year(m.SessionDate);
+
+  /* ---- الغلاف ---- */
+  pageCounter = 0;
+  const cover = newPage('cover', false);
+  cover.querySelector('.content').innerHTML = `
+    <div class="cover-box">
+      <div class="co">${E(company)}</div>
+      <div class="co">${E(board)}</div>
+      <div class="rule"></div>
+      <div class="ln">محضر اجتماع</div>
+      <div class="ln">الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${yr}</div>
+      <div class="ln">المنعقدة بتاريخ ${AR.formatDate(m.SessionDate)}</div>
+      <div class="rule"></div>
+    </div>`;
+
+  /* ---- بناء المحتوى: مقدمة + بند ببند ---- */
+  const chairman = data.members.find(x => x.MemberType === 'Chairman' && x.Present);
+  const others = data.members.filter(x => x.MemberType !== 'Chairman' && x.Present);
+  const secretary = data.members.find(x => x.MemberType === 'Secretary' && x.Present);
+  const guests = (data.guestAttendees || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+  const blocks = []; // عناصر HTML سيتم توزيعها على الصفحات
+
+  const openingHtml = `
+    <div class="op-co">${E(company)}</div>
+    <div class="op-co">${E(board)}</div>
+    <div class="op-rule"></div>
+    <div class="op-para">
+      في تمام الساعة ${m.SessionTime ? AR.timeWords(m.SessionTime) : AR.BLANK} من يوم ${AR.dayName(m.SessionDate)}
+      الموافق ${AR.formatDate(m.SessionDate)} اجتمع ${E(board)} برئاسة
+      ${chairman ? E(chairman.Name) + ' — ' + E(chairman.Role) : AR.BLANK}
+      وبحضور السادة الأعضاء الآتية أسماؤهم:
+    </div>
+    <div class="op-para">${others.map(x => E(x.Name) + ' — ' + E(x.Role)).join('<br>') || AR.BLANK}</div>
+    ${guests.length ? `<div class="op-para">${guests.map(E).join('<br>')}</div>` : ''}
+    <div class="op-note">وقام بأعمال أمانة سر المجلس: ${secretary ? E(secretary.Name) + ' — ' + E(secretary.Role) : AR.BLANK}</div>`;
+  blocks.push({ html: openingHtml, group: true });
+
+  data.items.forEach(it => {
+    const isMemo = !!it.MemoID;
+    const subject = isMemo ? it.Subject
+      : AR.composeSpecial(it.SpecialTemplate, { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+    const title = (isMemo ? `${it.RollNumber} – مذكرة بخصوص ` : '') + subject;
+    blocks.push({ html: `<div class="item-title">${E(title)}</div>` });
+
+    const text = (it.MinutesText || '').trim();
+    if (text) {
+      text.split('\n').forEach(line => {
+        const m2 = /^([^:：]{2,40})[:：](.*)$/.exec(line.trim());
+        if (m2) {
+          blocks.push({ html: `<div class="speaker">${E(m2[1])} :</div>` });
+          if (m2[2].trim()) blocks.push({ html: `<div class="speech">${E(m2[2].trim())}</div>` });
+        } else if (line.trim()) {
+          blocks.push({ html: `<div class="speech">${E(line.trim())}</div>` });
+        }
+      });
+    } else {
+      blocks.push({ html: `<div class="speech" style="color:#777;font-style:italic">لم تُسجَّل مداولات لهذا البند.</div>` });
+    }
+
+    blocks.push({ html: `<div class="decision-hdr">القـــرار</div>
+      <div class="decision-txt ${it.DecisionText ? '' : 'empty'}">${E(it.DecisionText || 'لم يُسجَّل قرار لهذا البند بعد')}</div>`, keepWithPrev: true });
+  });
+
+  const closingHtml = `
+    <div class="closing">وقد انتهى المجلس أعماله الساعة ....................</div>
+    <div class="sig-row"><div>أمين سر المجلس</div><div>رئيس مجلس الإدارة</div></div>`;
+  blocks.push({ html: closingHtml });
+
+  /* ---- توزيع الكتل على صفحات A4 ---- */
+  function newContentPage() {
+    const p = newPage('', true);
+    return p.querySelector('.content');
+  }
+  let content = newContentPage();
+  blocks.forEach(b => {
+    const div = document.createElement('div');
+    div.innerHTML = b.html;
+    while (div.firstChild) content.appendChild(div.firstChild);
+    const overflow = content.scrollHeight > content.clientHeight + 1;
+    if (overflow && content.children.length > 1) {
+      // انقل آخر عنصر أُضيف إلى صفحة جديدة
+      const moved = [];
+      let node = content.lastElementChild;
+      moved.unshift(node);
+      content.removeChild(node);
+      content = newContentPage();
+      moved.forEach(n => content.appendChild(n));
+    }
+  });
+
+  document.title = 'محضر الجلسة ' + (m.SessionNumber || '') + ' لسنة ' + yr;
+  document.getElementById('status').textContent = m.SessionNumber
+    ? `جاهز للطباعة — الجلسة ${m.SessionNumber} لسنة ${yr} (${pagesBox.children.length} صفحات)`
+    : 'تنبيه: هذه الجلسة بدون رقم بعد (الرول غير معتمد).';
+}
+build().catch(e => { document.getElementById('status').textContent = 'خطأ: ' + e.message; });
+</script>
+</body>
+</html>

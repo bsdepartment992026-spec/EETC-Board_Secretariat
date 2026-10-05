@@ -11,8 +11,6 @@
           --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --danger:#B3261E; --success:#1F7A4D; }
   * { box-sizing:border-box; }
   body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
-  .topbar { background:var(--ink); color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
-  .topbar a { color:#D8C79A; text-decoration:none; font-size:13px; }
   .wrap { max-width:1120px; margin:0 auto; padding:24px; }
 
   .head { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px 22px;
@@ -35,12 +33,20 @@
   button.small { padding:5px 11px; font-size:12px; }
   button:disabled { opacity:.5; cursor:default; }
 
-  .cols { display:grid; grid-template-columns:1.35fr 1fr; gap:20px; align-items:start; }
-  @media (max-width:860px) { .cols { grid-template-columns:1fr; } }
   h2 { font-family:'Markazi Text', serif; font-size:20px; margin:0 0 4px; }
   .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 10px; }
   .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+  .panel-toolbar { display:flex; gap:8px; padding:12px 16px; background:#FAFAF9; border-bottom:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+  .panel-toolbar .grow { flex:1; }
   .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:right; font-size:11px; color:var(--ink-soft); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  .group-row td { background:var(--accent-soft); color:var(--accent); font-weight:700; text-align:center; font-size:12.5px; }
+  .status-chip { font-size:11px; padding:2px 8px; border-radius:10px; background:#F3E9C6; color:#7A5E13; white-space:nowrap; }
+  .status-chip.new { background:#E3F1E9; color:var(--success); }
 
   .item { display:flex; gap:14px; padding:14px 16px; border-bottom:1px solid var(--line); align-items:flex-start; }
   .item:last-child { border-bottom:none; }
@@ -57,14 +63,11 @@
   .lock { font-size:11px; color:var(--accent); }
   select, .field { padding:6px 8px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:12.5px; background:#fff; }
 
-  .pool-item { padding:12px 16px; border-bottom:1px solid var(--line); }
-  .pool-item:last-child { border-bottom:none; }
-  .pool-item .subj { font-size:13px; line-height:1.65; }
-  .pool-item .row { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
-
-  .special-box { padding:14px 16px; display:grid; gap:10px; }
+  .special-box { padding:14px 16px; display:grid; gap:10px; grid-template-columns:1fr 1fr 1fr auto; align-items:end; }
+  @media (max-width:760px) { .special-box { grid-template-columns:1fr; } }
   .special-box label { display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:3px; }
   .special-box select { width:100%; }
+  .special-toggle { padding:10px 16px; font-size:12.5px; color:var(--accent); cursor:pointer; border-bottom:1px solid var(--line); background:#FAFAF9; }
 
   .modal-bg { position:fixed; inset:0; background:rgba(27,42,65,.45); display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
   .modal { background:#fff; border-radius:8px; padding:26px; width:100%; max-width:380px; }
@@ -76,7 +79,7 @@
 </style>
 </head>
 <body>
-  <div class="topbar"><div>📋 بناء الرول</div><a href="meetings.html">→ الجلسات</a></div>
+  <div class="topbar"><div class="brand">📋 بناء الرول</div><div class="top-nav"></div></div>
 
   <div class="wrap">
     <div class="head">
@@ -92,26 +95,34 @@
       <div class="actions">
         <button class="accent" id="approveBtn" onclick="openApprove()">اعتماد الرول</button>
         <button class="primary" onclick="printRoll()">🖨️ طباعة الرول</button>
+        <button class="ghost" onclick="location.href='minutes.html?id='+encodeURIComponent(MID)">📝 محضر الجلسة</button>
         <button class="danger-ghost" onclick="deleteMeeting()">حذف الجلسة</button>
       </div>
     </div>
 
-    <div class="cols">
-      <section>
-        <h2>الرول</h2>
-        <p class="lead">بترتيب العرض. استخدم ▲ ▼ لتغيير الترتيب، والأرقام تتحدّث تلقائيًا.</p>
-        <div class="panel" id="rollPanel"></div>
-      </section>
+    <h2 id="totalTitle">إجمالي المذكرات</h2>
+    <p class="lead">كل المذكرات التي لم تدخل أي جلسة بعد. حدّد ما تريد إدراجه ثم انقله للرول.</p>
+    <div class="panel">
+      <div class="panel-toolbar">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
+          <input type="checkbox" id="selectAllPool" onchange="toggleSelectAll(this)"> تحديد الكل
+        </label>
+        <span class="grow"></span>
+        <button class="ghost small" onclick="printTotal()">🖨️ طباعة إجمالي المذكرات</button>
+        <button class="primary small" onclick="transferSelected()">نقل المحدد إلى الرول</button>
+        <button class="accent small" onclick="transferAll()">نقل جميع المذكرات إلى الرول</button>
+      </div>
+      <table id="poolTable"><thead><tr>
+        <th></th><th>م</th><th>الموضوع</th><th>تاريخ صادر</th><th>رقم صادر</th><th>الحالة</th>
+      </tr></thead><tbody id="poolRows"></tbody></table>
+    </div>
 
-      <aside>
-        <h2>المذكرات المتاحة</h2>
-        <p class="lead">مذكرات لم تدخل أي جلسة (أو عادت بعد حذفها من رول). لا تُحذف أبدًا.</p>
-        <div class="panel" id="poolPanel"></div>
-
-        <h2>بنود ثابتة</h2>
-        <p class="lead">تصديق على محضر، إحاطة بالقرارات، متابعة، ما يستجد.</p>
-        <div class="panel" id="specialPanel"></div>
-      </aside>
+    <h2 id="rollTitle">جدول الأعمال</h2>
+    <p class="lead">بترتيب العرض. استخدم ▲ ▼ لتغيير الترتيب، و↩ لإرجاع مذكرة لجدول الإجمالي.</p>
+    <div class="panel">
+      <div class="special-toggle" onclick="toggleSpecialBox()">+ إضافة بند ثابت (تصديق / إحاطة / متابعة / ما يستجد)</div>
+      <div class="panel" id="specialPanel" style="display:none;margin:0;border:none;border-bottom:1px solid var(--line);border-radius:0"></div>
+      <div id="rollPanel"></div>
     </div>
   </div>
 
@@ -130,8 +141,10 @@
 
 <script src="js/api.js"></script>
 <script src="js/arabic.js"></script>
+<script src="js/nav.js"></script>
 <script>
 API.requireLogin();
+renderTopNav('meetings');
 if (!API.hasPermission('ManageMeetings')) {
   alert('ليس لديك صلاحية الوصول لهذه الصفحة');
   window.location.href = 'index.html';
@@ -139,8 +152,9 @@ if (!API.hasPermission('ManageMeetings')) {
 const MID = new URLSearchParams(location.search).get('id');
 if (!MID) location.href = 'meetings.html';
 
-const S = { meeting: null, items: [], pool: [], orgs: {}, settings: [], meetings: [] };
+const S = { meeting: null, items: [], pool: [], settings: [], meetings: [] };
 const E = AR.esc;
+const selected = new Set();
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -153,21 +167,19 @@ async function run(fn) {
 
 /* ---------------- تحميل ---------------- */
 async function loadAll() {
-  const [roll, pool, orgs, settings, meetings] = await Promise.all([
+  const [roll, pool, settings, meetings] = await Promise.all([
     API.call('getMeetingRoll', { MeetingID: MID }),
-    API.call('listAvailableMemos'),
-    API.call('listOrganizations'),
+    API.call('getAvailableMemosDetailed'),
     API.call('listSettings'),
     API.call('listMeetings')
   ]);
   S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.settings = settings; S.meetings = meetings;
-  S.orgs = {}; orgs.forEach(o => S.orgs[o.OrgID] = o.Name);
   renderAll();
 }
 async function refresh() {
   const [roll, pool, meetings] = await Promise.all([
     API.call('getMeetingRoll', { MeetingID: MID }),
-    API.call('listAvailableMemos'),
+    API.call('getAvailableMemosDetailed'),
     API.call('listMeetings')
   ]);
   S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.meetings = meetings;
@@ -184,7 +196,7 @@ function typeSelect(id, selected, onchange) {
     `</select>`;
 }
 
-function renderAll() { renderHead(); renderRoll(); renderPool(); renderSpecial(); }
+function renderAll() { renderHead(); renderPool(); renderRoll(); renderSpecial(); }
 
 function renderHead() {
   const m = S.meeting;
@@ -197,11 +209,74 @@ function renderHead() {
   document.getElementById('dateInput').value = m.SessionDate || '';
   document.getElementById('timeInput').value = m.SessionTime || '';
   document.getElementById('approveBtn').textContent = m.SessionNumber ? 'تعديل رقم الجلسة' : 'اعتماد الرول';
+
+  const today = new Date();
+  document.getElementById('totalTitle').textContent =
+    `إجمالي المذكرات حتى ${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+  document.getElementById('rollTitle').textContent = m.SessionNumber
+    ? `جدول أعمال الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${AR.year(m.SessionDate)} المنعقدة بتاريخ ${AR.formatDate(m.SessionDate)}`
+    : `جدول أعمال الجلسة (بدون رقم بعد) — ${AR.formatDate(m.SessionDate)}`;
 }
 
+/* ---------------- إجمالي المذكرات ---------------- */
+function renderPool() {
+  const box = document.getElementById('poolRows');
+  if (!S.pool.length) { box.innerHTML = '<tr><td colspan="6" class="empty">لا توجد مذكرات متاحة. سجّلها من شاشة "المذكرات".</td></tr>'; return; }
+
+  const groups = {}; const order = [];
+  S.pool.forEach(m => {
+    const key = m.OrgName || 'بدون جهة';
+    if (!(key in groups)) { groups[key] = []; order.push(key); }
+    groups[key].push(m);
+  });
+
+  let n = 0, html = '';
+  order.forEach(orgName => {
+    html += `<tr class="group-row"><td colspan="6">${E(orgName)}</td></tr>`;
+    groups[orgName].forEach(m => {
+      n++;
+      const chip = m.DeferredFromSession ? `<span class="status-chip">${E(m.StatusLabel)}</span>` : `<span class="status-chip new">جديدة</span>`;
+      html += `<tr>
+        <td><input type="checkbox" class="poolCheck" value="${m.MemoID}" ${selected.has(m.MemoID) ? 'checked' : ''} onchange="onPoolCheck(this)"></td>
+        <td>${n}</td>
+        <td>${E(m.Subject)}</td>
+        <td>${AR.formatDate(m.ChairmanOutgoingDate)}</td>
+        <td>${E(m.ChairmanOutgoingNo)}</td>
+        <td>${chip}</td>
+      </tr>`;
+    });
+  });
+  box.innerHTML = html;
+}
+function onPoolCheck(cb) { cb.checked ? selected.add(cb.value) : selected.delete(cb.value); }
+function toggleSelectAll(master) {
+  document.querySelectorAll('.poolCheck').forEach(cb => { cb.checked = master.checked; onPoolCheck(cb); });
+}
+function transferSelected() {
+  if (!selected.size) { toast('حدّد مذكرة واحدة على الأقل'); return; }
+  run(async () => {
+    await API.call('addRollMemosBulk', { MeetingID: MID, MemoIDs: Array.from(selected) });
+    selected.clear();
+    toast('تم نقل المذكرات المحددة إلى الرول');
+    await refresh();
+  });
+}
+function transferAll() {
+  if (!S.pool.length) { toast('لا توجد مذكرات متاحة'); return; }
+  if (!confirm(`نقل كل المذكرات الـ ${S.pool.length} إلى الرول؟`)) return;
+  run(async () => {
+    await API.call('addRollMemosBulk', { MeetingID: MID, MemoIDs: S.pool.map(m => m.MemoID) });
+    selected.clear();
+    toast('تم نقل كل المذكرات إلى الرول');
+    await refresh();
+  });
+}
+function printTotal() { window.open('total-print.html', '_blank'); }
+
+/* ---------------- جدول الرول ---------------- */
 function renderRoll() {
   const box = document.getElementById('rollPanel');
-  if (!S.items.length) { box.innerHTML = '<div class="empty">الرول فارغ. أضف مذكرات من "المذكرات المتاحة" أو بنودًا ثابتة.</div>'; return; }
+  if (!S.items.length) { box.innerHTML = '<div class="empty">الرول فارغ. انقل مذكرات من إجمالي المذكرات أو أضف بندًا ثابتًا.</div>'; return; }
   const last = S.items.length - 1;
   box.innerHTML = S.items.map((it, i) => {
     const isMemo = !!it.MemoID;
@@ -219,36 +294,24 @@ function renderRoll() {
       <div class="ctrl">
         <button ${i === 0 ? 'disabled' : ''} onclick="move('${it.RollItemID}','up')">▲</button>
         <button ${i === last ? 'disabled' : ''} onclick="move('${it.RollItemID}','down')">▼</button>
-        <button class="x" ${it.HasDecision ? 'disabled' : ''} onclick="removeItem('${it.RollItemID}')">✕</button>
+        <button class="x" ${it.HasDecision ? 'disabled' : ''} onclick="removeItem('${it.RollItemID}')" title="إرجاع إلى إجمالي المذكرات">↩</button>
       </div>
     </div>`;
   }).join('');
-}
-
-function renderPool() {
-  const box = document.getElementById('poolPanel');
-  if (!S.pool.length) { box.innerHTML = '<div class="empty">لا توجد مذكرات متاحة. سجّلها من شاشة "المذكرات".</div>'; return; }
-  box.innerHTML = S.pool.map(m => `
-    <div class="pool-item">
-      <div class="subj">${E(m.Subject)}</div>
-      <div class="row">
-        <span class="lead" style="margin:0">${E(S.orgs[m.OrganizationID] || '')} ${m.ChairmanOutgoingNo ? '· صادر ' + E(m.ChairmanOutgoingNo) : ''}</span>
-      </div>
-      <div class="row">
-        ${typeSelect('pt_' + m.MemoID, '')}
-        <button class="primary small" onclick="addMemo('${m.MemoID}')">إضافة للرول</button>
-      </div>
-    </div>`).join('');
 }
 
 function refOptions() {
   const cur = S.meeting;
   const others = S.meetings.filter(x => x.MeetingID !== cur.MeetingID && x.SessionNumber);
   const before = others.filter(x => String(x.SessionDate) < String(cur.SessionDate));
-  return (before.length ? before : others).concat(before.length ? others.filter(x => !before.includes(x)) : [])
+  return (before.length ? before : others)
     .map(x => `<option value="${E(x.MeetingID)}">الجلسة ${x.SessionNumber} لسنة ${AR.year(x.SessionDate)} — ${AR.formatDate(x.SessionDate)}</option>`).join('');
 }
 
+function toggleSpecialBox() {
+  const el = document.getElementById('specialPanel');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
 function renderSpecial() {
   const box = document.getElementById('specialPanel');
   const types = specialTypes();
@@ -259,8 +322,8 @@ function renderSpecial() {
     <div id="spRefWrap"><label>الجلسة المرجعية</label>
       <select id="spRef">${refOptions() || '<option value="">لا توجد جلسات معتمدة سابقة</option>'}</select></div>
     <div><label>مكانه في الرول</label>
-      <select id="spPos"><option value="top">في الأول (بعد البنود الثابتة)</option><option value="bottom">في الآخر</option></select></div>
-    <button class="primary" onclick="addSpecial()">إضافة البند</button>
+      <select id="spPos"><option value="top">في الأول</option><option value="bottom">في الآخر</option></select></div>
+    <button class="primary small" onclick="addSpecial()">إضافة</button>
   </div>`;
   onSpType();
 }
@@ -269,15 +332,7 @@ function onSpType() {
   document.getElementById('spRefWrap').style.display = t && /\{ref/.test(t.Value || '') ? 'block' : 'none';
 }
 
-/* ---------------- إجراءات ---------------- */
-function addMemo(memoId) {
-  run(async () => {
-    const MemoTypeID = document.getElementById('pt_' + memoId).value;
-    await API.call('addRollMemo', { MeetingID: MID, MemoID: memoId, MemoTypeID });
-    toast('تمت إضافة المذكرة للرول');
-    await refresh();
-  });
-}
+/* ---------------- إجراءات الرول ---------------- */
 function addSpecial() {
   run(async () => {
     const SpecialTypeID = document.getElementById('spType').value;
@@ -293,8 +348,8 @@ function addSpecial() {
 }
 function move(id, dir) { run(async () => { await API.call('moveRollItem', { RollItemID: id, Direction: dir }); await refresh(); }); }
 function removeItem(id) {
-  if (!confirm('حذف هذا البند من الرول؟ المذكرة ستعود لقائمة المتاحة ولن تُحذف.')) return;
-  run(async () => { await API.call('removeRollItem', { RollItemID: id }); toast('تم حذف البند'); await refresh(); });
+  if (!confirm('إرجاع هذه المذكرة إلى جدول إجمالي المذكرات؟')) return;
+  run(async () => { await API.call('removeRollItem', { RollItemID: id }); toast('تم إرجاع المذكرة'); await refresh(); });
 }
 function changeType(id, typeId) {
   run(async () => { await API.call('updateRollItem', { RollItemID: id, MemoTypeID: typeId }); toast('تم تغيير النوع'); });

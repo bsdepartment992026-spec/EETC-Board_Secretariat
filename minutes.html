@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>محضر الجلسة — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --success:#1F7A4D; --danger:#B3261E; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .topbar { background:var(--ink); color:#fff; padding:14px 28px; display:flex; justify-content:space-between; align-items:center; }
+  .topbar a { color:#D8C79A; text-decoration:none; font-size:13px; }
+  .wrap { max-width:1060px; margin:0 auto; padding:24px; }
+
+  .head { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:18px 22px;
+          display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+  .head h1 { font-family:'Markazi Text', serif; font-size:24px; margin:0 0 4px; }
+  .head .sub { font-size:12.5px; color:var(--ink-soft); }
+  button { font-family:inherit; cursor:pointer; border:none; border-radius:5px; font-size:13px; font-weight:600; padding:9px 16px; }
+  button.primary { background:var(--ink); color:#fff; } button.primary:hover { background:#0F1A2C; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } button.ghost:hover { background:var(--paper); }
+  button.small { padding:5px 11px; font-size:12px; }
+  button:disabled { opacity:.5; cursor:default; }
+
+  h2 { font-family:'Markazi Text', serif; font-size:20px; margin:0 0 4px; }
+  .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 10px; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:22px; }
+
+  /* الحضور */
+  .att-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:0; }
+  @media (max-width:640px) { .att-grid { grid-template-columns:1fr; } }
+  .att-row { display:flex; align-items:center; gap:10px; padding:11px 16px; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .att-row.absent { color:#B0B6BE; text-decoration:line-through; }
+  .att-row input { flex:none; }
+  .att-row .role { font-size:11.5px; color:var(--ink-soft); }
+  .att-row:not(.absent) .role { color:var(--ink-soft); }
+  .guests { padding:14px 16px; }
+  .guests label { display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .guests textarea { width:100%; min-height:70px; padding:9px 11px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13px; }
+  .guests .save-row { margin-top:10px; text-align:left; }
+
+  /* الملفات */
+  .files-row { display:flex; gap:10px; padding:14px 16px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--line); }
+  .files-row:last-child { border-bottom:none; }
+  .files-row .lbl { font-size:13px; font-weight:600; flex:none; width:150px; }
+  .files-row input[type=file] { font-size:12.5px; flex:1; min-width:180px; }
+  .file-chip { font-size:12px; background:var(--accent-soft); color:var(--accent); padding:4px 10px; border-radius:12px; }
+  .file-chip a { color:inherit; text-decoration:none; }
+
+  /* بنود المداولات */
+  .item { border-bottom:1px solid var(--line); padding:16px; }
+  .item:last-child { border-bottom:none; }
+  .item .no { display:inline-flex; width:28px; height:28px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+              align-items:center; justify-content:center; font-weight:700; font-size:13px; margin-left:8px; }
+  .item.special .no { background:#EEF0F3; color:var(--ink-soft); }
+  .item .subj { font-size:14px; font-weight:600; line-height:1.7; display:inline; }
+  .item textarea { width:100%; min-height:110px; margin-top:10px; padding:10px 12px; border:1px solid var(--line);
+                    border-radius:5px; font-family:inherit; font-size:13.5px; line-height:1.8; resize:vertical; }
+  .item .save-row { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+  .item .saved-hint { font-size:11.5px; color:var(--success); display:none; }
+  .decision-box { margin-top:10px; background:var(--paper); border:1px dashed var(--line); border-radius:5px; padding:10px 12px; font-size:13px; }
+  .decision-box .lbl { font-size:11px; color:var(--ink-soft); font-weight:600; margin-bottom:3px; }
+  .decision-box.empty { color:var(--ink-soft); font-style:italic; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:10; }
+</style>
+</head>
+<body>
+    <div class="topbar"><div class="brand">📝 محضر الجلسة</div><div class="top-nav"></div></div>
+
+  <div class="wrap">
+    <div class="head">
+      <div>
+        <h1 id="title">جارٍ التحميل...</h1>
+        <div class="sub" id="subtitle"></div>
+      </div>
+      <button class="primary" onclick="printMinutes()">🖨️ طباعة المحضر</button>
+    </div>
+
+    <h2>الحضور</h2>
+    <p class="lead">كل الأعضاء حاضرون افتراضيًا. اشِّر بإلغاء التحديد على من تغيّب.</p>
+    <div class="panel">
+      <div class="att-grid" id="attGrid"></div>
+      <div class="guests">
+        <label>حضور إضافي (ضيوف خاصون بهذه الجلسة) — اسم ثم الصفة، كل واحد في سطر</label>
+        <textarea id="guestsInput" placeholder="مثال: الدكتور المحاسب / أحمد سمير عبد اللطيف - ممثلاً عن وزارة المالية"></textarea>
+        <div class="save-row"><button class="ghost small" onclick="saveAttendance()">حفظ الحضور</button></div>
+      </div>
+    </div>
+
+    <h2>ملفات الجلسة</h2>
+    <p class="lead">التسجيل الصوتي والمحضر المكتوب (اختياري الآن، يمكن إضافتهما لاحقًا).</p>
+    <div class="panel" id="filesPanel"></div>
+
+    <h2>بنود المداولات</h2>
+    <p class="lead">اكتب ما دار من نقاش لكل بند. يُحفظ تلقائيًا عند الخروج من الحقل.</p>
+    <div class="panel" id="itemsPanel"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script src="js/nav.js"></script>
+<script>
+API.requireLogin();
+renderTopNav('meetings');
+if (!API.hasPermission('ManageMinutes')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+const MID = new URLSearchParams(location.search).get('id');
+if (!MID) location.href = 'meetings.html';
+const E = AR.esc;
+let S = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2400);
+}
+async function run(fn) { try { await fn(); } catch (e) { toast('خطأ: ' + e.message); } }
+
+async function load() {
+  S = await API.call('getMeetingMinutes', { MeetingID: MID });
+  renderHead(); renderAttendance(); renderFiles(); renderItems();
+}
+
+function renderHead() {
+  const m = S.meeting;
+  document.getElementById('title').textContent = m.SessionNumber
+    ? `محضر الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${AR.year(m.SessionDate)}`
+    : 'محضر جلسة (بدون رقم بعد)';
+  document.getElementById('subtitle').textContent =
+    `${m.MeetingID} · ${AR.dayName(m.SessionDate)} ${AR.formatDate(m.SessionDate)} · الساعة ${m.SessionTime ? AR.timeWords(m.SessionTime) : '—'}`;
+}
+
+const TYPE_LABEL = { Chairman: 'رئيس المجلس', Member: 'عضو', Secretary: 'أمانة سر' };
+function renderAttendance() {
+  document.getElementById('attGrid').innerHTML = S.members.map(m => `
+    <label class="att-row ${m.Present ? '' : 'absent'}">
+      <input type="checkbox" data-id="${m.MemberID}" ${m.Present ? 'checked' : ''} onchange="toggleRow(this)">
+      <span>${E(m.Name)}<br><span class="role">${E(m.Role)} · ${TYPE_LABEL[m.MemberType] || ''}</span></span>
+    </label>`).join('') || '<div style="padding:16px" class="lead">لا يوجد أعضاء مسجّلون في الإعدادات.</div>';
+  document.getElementById('guestsInput').value = S.guestAttendees || '';
+}
+function toggleRow(cb) { cb.closest('.att-row').classList.toggle('absent', !cb.checked); }
+
+function saveAttendance() {
+  run(async () => {
+    const absent = Array.from(document.querySelectorAll('#attGrid input[type=checkbox]'))
+      .filter(c => !c.checked).map(c => c.dataset.id);
+    await API.call('updateAttendance', {
+      MeetingID: MID, AbsentMemberIDs: absent,
+      GuestAttendees: document.getElementById('guestsInput').value.trim()
+    });
+    toast('تم حفظ الحضور');
+    await load();
+  });
+}
+
+const FILE_KINDS = [
+  { sub: 'Audio', label: 'تسجيل صوتي للجلسة', docType: 'تسجيل صوتي للجلسة' },
+  { sub: 'Minutes', label: 'المحضر المكتوب (PDF/Word)', docType: 'محضر مكتوب' }
+];
+function renderFiles() {
+  document.getElementById('filesPanel').innerHTML = FILE_KINDS.map(k => {
+    const existing = S.documents.filter(d => d.DocTypeLabel === k.docType);
+    return `<div class="files-row">
+      <div class="lbl">${k.label}</div>
+      <input type="file" id="file_${k.sub}">
+      <button class="ghost small" onclick="uploadFile('${k.sub}','${k.docType}')">رفع</button>
+      ${existing.map(d => `<span class="file-chip"><a href="${d.Url}" target="_blank">📎 ${E(d.FileName)}</a></span>`).join('')}
+    </div>`;
+  }).join('');
+}
+function uploadFile(sub, docTypeLabel) {
+  run(async () => {
+    const input = document.getElementById('file_' + sub);
+    const file = input.files[0];
+    if (!file) { toast('اختر ملفًا أولًا'); return; }
+    const fileBase64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result.split(',')[1]);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    await API.call('uploadMeetingDocument', {
+      MeetingID: MID, Subfolder: sub, DocTypeLabel: docTypeLabel,
+      fileName: file.name, mimeType: file.type || 'application/octet-stream', fileBase64
+    });
+    toast('تم رفع الملف');
+    await load();
+  });
+}
+
+function renderItems() {
+  const box = document.getElementById('itemsPanel');
+  if (!S.items.length) { box.innerHTML = '<div style="padding:28px" class="lead">لا توجد بنود في الرول لهذه الجلسة.</div>'; return; }
+  box.innerHTML = S.items.map(it => {
+    const isMemo = !!it.MemoID;
+    const subject = isMemo ? it.Subject
+      : AR.composeSpecial(it.SpecialTemplate, { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+    const decisionHtml = it.DecisionText
+      ? `<div class="decision-box"><div class="lbl">القرار</div>${E(it.DecisionText)}</div>`
+      : `<div class="decision-box empty">لم يُسجَّل قرار لهذا البند بعد.</div>`;
+    return `<div class="item ${isMemo ? '' : 'special'}">
+      <span class="no">${it.RollNumber || '—'}</span><span class="subj">${E(subject)}</span>
+      <textarea id="min_${it.RollItemID}" placeholder="اكتب ما دار من نقاش حول هذا البند..."
+        onblur="saveMinutesText('${it.RollItemID}')">${E(it.MinutesText)}</textarea>
+      <div class="save-row"><span class="saved-hint" id="hint_${it.RollItemID}">تم الحفظ ✓</span></div>
+      ${decisionHtml}
+    </div>`;
+  }).join('');
+}
+
+function saveMinutesText(rollItemId) {
+  run(async () => {
+    const text = document.getElementById('min_' + rollItemId).value;
+    await API.call('updateItemMinutes', { RollItemID: rollItemId, MinutesText: text });
+    const hint = document.getElementById('hint_' + rollItemId);
+    hint.style.display = 'inline'; setTimeout(() => hint.style.display = 'none', 1500);
+  });
+}
+
+function printMinutes() { window.open('minutes-print.html?id=' + encodeURIComponent(MID), '_blank'); }
+
+run(load);
+</script>
+</body>
+</html>

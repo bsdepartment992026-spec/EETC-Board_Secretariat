@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طباعة إجمالي المذكرات</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E8EAED; font-family: 'Times New Roman', 'Traditional Arabic', serif; color: #000; }
+
+  .toolbar { position: sticky; top: 0; background: #1B2A41; color: #fff; padding: 10px 20px; display: flex;
+             gap: 14px; align-items: center; font-family: 'Cairo', sans-serif; font-size: 13px; z-index: 5; flex-wrap: wrap; }
+  .toolbar button { background: #A6802E; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .toolbar .hint { color: #C9CFD8; font-size: 12px; }
+
+  .page { width: 210mm; height: 297mm; position: relative; background: #fff; margin: 16px auto; overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,.18); break-after: page; page-break-after: always; }
+  .page .frame { position: absolute; top: 9mm; right: 9mm; bottom: 9mm; left: 9mm; border: 0.35mm solid #000; }
+  .page .content { position: absolute; top: 14mm; right: 16mm; bottom: 14mm; left: 16mm; overflow: hidden; }
+  .page .pageno { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 13pt; }
+
+  .hdr-co { font-size: 14pt; font-weight: 700; line-height: 1.5; text-align: center; width: 58%; margin: 0 0 0 auto; }
+  .hdr-title { text-align: center; font-weight: 700; font-size: 13pt; margin: 4mm 0 4mm; }
+
+  table.tot { width: 100%; border-collapse: collapse; border: 0.3mm solid #000; }
+  th.colhead { font-size: 13pt; font-weight: 700; padding: 1.5mm 2mm; text-align: center; border-bottom: 0.3mm solid #000; border-left: 0.3mm solid #000; }
+  th.colhead:last-child { border-left: none; }
+  td { padding: 2.2mm 2mm; font-size: 13pt; font-weight: 700; line-height: 1.6; vertical-align: top; text-align: right;
+       border-left: 0.3mm solid #000; }
+  td:last-child { border-left: none; }
+  td.no { width: 8mm; text-align: center; }
+  td.subj { text-align: right; }
+  td.date, td.docno { width: 22mm; text-align: center; }
+  td.status { width: 24mm; text-align: center; }
+  td.status.deferred { background: #FFF08A; }
+  td.notes { width: 24mm; }
+  tr.group-row td { text-align: center; font-weight: 700; text-decoration: underline; background: #F4F4F4; border-top: 0.3mm solid #000; border-bottom: 0.3mm solid #000; }
+
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨️ طباعة</button>
+    <span id="status">جارٍ التجهيز...</span>
+    <span class="hint">اختر A4 وبدون هوامش/رؤوس المتصفح.</span>
+  </div>
+  <div id="pages"></div>
+
+<script src="js/api.js"></script>
+<script>
+API.requireLogin();
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+  return m ? `${+m[3]}/${+m[2]}/${+m[1]}` : '';
+}
+function setting(list, label) {
+  const r = list.find(s => s.ListName === 'General' && s.Label === label);
+  return r ? r.Value : '';
+}
+
+const pagesBox = document.getElementById('pages');
+let pageCounter = 0;
+function newPage() {
+  const p = document.createElement('div');
+  p.className = 'page';
+  pageCounter++;
+  p.innerHTML = `<div class="frame"></div><div class="content"></div><div class="pageno">${pageCounter}</div>`;
+  pagesBox.appendChild(p);
+  return p.querySelector('.content');
+}
+
+async function build() {
+  const [memos, settings] = await Promise.all([
+    API.call('getAvailableMemosDetailed'),
+    API.call('listSettings')
+  ]);
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const company = setting(settings, 'CompanyName') || 'الشركة';
+  const board = setting(settings, 'BoardName') || 'مجلس الإدارة';
+  const today = new Date();
+  const todayStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+
+  const headerHtml = `
+    <div class="hdr-co">${esc(company)}</div>
+    <div class="hdr-co">${esc(board)}</div>
+    <div class="hdr-title">إجمالي المذكرات حتى ${todayStr}</div>
+    <table class="tot"><thead><tr>
+      <th class="colhead" style="width:8mm">م</th>
+      <th class="colhead">الموضوع</th>
+      <th class="colhead" style="width:22mm">تاريخ صادر رئيس مجلس الإدارة</th>
+      <th class="colhead" style="width:22mm">رقم صادر رئيس مجلس الإدارة</th>
+      <th class="colhead" style="width:24mm">حالة المذكرة (جديدة/مؤجلة)</th>
+      <th class="colhead" style="width:24mm">ملاحظات</th>
+    </tr></thead><tbody></tbody></table>`;
+
+  function newTotalPage() {
+    const content = newPage();
+    content.innerHTML = headerHtml;
+    return content.querySelector('tbody');
+  }
+
+  // تجميع حسب الجهة مع ترقيم متصل عبر المجموعات
+  const groups = {};
+  const order = [];
+  memos.forEach(m => {
+    const key = m.OrgName || 'بدون جهة';
+    if (!(key in groups)) { groups[key] = []; order.push(key); }
+    groups[key].push(m);
+  });
+
+  const rows = [];
+  let n = 0;
+  order.forEach(orgName => {
+    const tr = document.createElement('tr');
+    tr.className = 'group-row';
+    tr.innerHTML = `<td colspan="6">${esc(orgName)}</td>`;
+    rows.push(tr);
+    groups[orgName].forEach(m => {
+      n++;
+      const tr2 = document.createElement('tr');
+      const deferred = !!m.DeferredFromSession;
+      tr2.innerHTML = `
+        <td class="no">${n}</td>
+        <td class="subj">${esc(m.Subject)}</td>
+        <td class="date">${fmtDate(m.ChairmanOutgoingDate)}</td>
+        <td class="docno">${esc(m.ChairmanOutgoingNo)}</td>
+        <td class="status ${deferred ? 'deferred' : ''}">${esc(m.StatusLabel)}</td>
+        <td class="notes">${esc(m.Notes)}</td>`;
+      rows.push(tr2);
+    });
+  });
+  if (!rows.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td class="no"></td><td class="subj" style="text-align:center">لا توجد مذكرات متاحة حاليًا</td><td class="date"></td><td class="docno"></td><td class="status"></td><td class="notes"></td>';
+    rows.push(tr);
+  }
+
+  let tbody = newTotalPage();
+  rows.forEach(tr => {
+    tbody.appendChild(tr);
+    const content = tbody.closest('.content');
+    const overflow = content.scrollHeight > content.clientHeight + 1;
+    if (overflow && tbody.children.length > 1) {
+      tbody.removeChild(tr);
+      tbody = newTotalPage();
+      tbody.appendChild(tr);
+    }
+  });
+
+  document.title = 'إجمالي المذكرات حتى ' + todayStr;
+  document.getElementById('status').textContent = `جاهز للطباعة — ${memos.length} مذكرة (${pagesBox.children.length} صفحات)`;
+}
+build().catch(e => { document.getElementById('status').textContent = 'خطأ: ' + e.message; });
+</script>
+</body>
+</html>
