@@ -76,9 +76,12 @@
   .add-row.stacked .fields input, .add-row.stacked .fields select { flex:1; min-width:160px; padding:9px 11px;
     border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:13.5px; background:#fff; }
   .perm-label { font-size:11.5px; color:var(--ink-soft); font-weight:600; margin:2px 0 8px; }
-  .perm-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 16px; margin-bottom:14px; }
-  @media (max-width:560px) { .perm-grid { grid-template-columns:1fr; } }
-  .perm-item { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink); }
+  .perm-grid { border:1px solid var(--line); border-radius:5px; overflow:hidden; margin-bottom:14px; background:#fff; }
+  .perm-item { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--ink);
+               padding:9px 12px; border-bottom:1px solid var(--line); }
+  .perm-item:last-child { border-bottom:none; }
+  .perm-item:hover { background:var(--paper); }
+  .perm-item input { flex:none; width:15px; height:15px; accent-color:var(--accent); }
   .user-perms { font-size:11.5px; color:var(--ink-soft); margin-top:3px; line-height:1.8; }
   .edit-panel { background:#FAFAF9; border-top:1px dashed var(--line); padding:14px 18px; display:none; }
   .edit-panel.open { display:block; }
