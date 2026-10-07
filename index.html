@@ -13,22 +13,26 @@
   body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; padding:0; color:var(--ink); }
 
   .masthead { background:var(--ink); color:#fff; padding:22px 28px 18px; text-align:center; }
-  .masthead .logo { width:62px; height:62px; margin:0 auto 10px; display:block; }
-  .masthead h1 { font-family:'Markazi Text', serif; font-size:21px; margin:0; font-weight:700; }
-  .masthead .user { font-size:12px; color:#C9CFD8; margin-top:8px; }
+  .masthead .logo { width:95px; height:95px; margin:0 auto 12px; display:block; }
+  .masthead h1 { font-family:'Markazi Text', serif; font-size:22px; margin:0; font-weight:700; line-height:1.4; }
+  .masthead .user { font-size:14px; color:#C9CFD8; margin-top:10px; }
   .masthead .user a { color:#D8C79A; cursor:pointer; text-decoration:none; }
   .masthead .top-nav { display:flex; justify-content:center; gap:2px; margin-top:12px; }
 
   .wrap { max-width:960px; margin:0 auto; padding:0 24px 32px; }
 
   /* الداشبورد */
-  .dash { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background:var(--line);
+  .dash { display:grid; grid-template-columns:repeat(3, 1fr); gap:1px; background:var(--line);
           border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-top:-18px;
           box-shadow:0 4px 14px rgba(27,42,65,.08); }
-  @media (max-width:640px) { .dash { grid-template-columns:repeat(2, 1fr); } }
-  .dash .cell { background:var(--surface); padding:16px; text-align:center; }
-  .dash .cell .num { font-family:'Markazi Text', serif; font-size:28px; font-weight:700; color:var(--accent); }
-  .dash .cell .lbl { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  @media (max-width:800px) { .dash { grid-template-columns:repeat(2, 1fr); } }
+  @media (max-width:500px) { .dash { grid-template-columns:1fr; } }
+  .dash .cell { background:var(--surface); padding:20px; text-align:center; min-height:120px; display:flex; flex-direction:column; justify-content:center; }
+  .dash .cell .num { font-family:'Markazi Text', serif; font-size:32px; font-weight:700; color:var(--accent); }
+  .dash .cell .lbl { font-size:14px; color:var(--ink); margin-top:6px; font-weight:600; }
+  .dash .cell .sublbl { font-size:11px; color:var(--ink-soft); margin-top:4px; line-height:1.5; }
+  .dash .cell.clickable { cursor:pointer; transition:background .15s; }
+  .dash .cell.clickable:hover { background:#FAFAF8; }
 
   /* البحث */
   .search-bar { background:var(--surface); border:1px solid var(--line); border-radius:6px;
@@ -48,11 +52,11 @@
   @media (max-width:720px) { .grid { grid-template-columns:1fr 1fr; } }
   @media (max-width:460px) { .grid { grid-template-columns:1fr; } }
 
-  .tile { background:var(--surface); padding:22px; text-decoration:none; color:var(--ink); display:block; }
+  .tile { background:var(--surface); padding:24px; text-decoration:none; color:var(--ink); display:block; min-height:110px; }
   .tile:hover { background:#FAFAF8; }
-  .tile .icon { font-size:22px; margin-bottom:10px; display:block; }
-  .tile .name { font-weight:600; font-size:14.5px; }
-  .tile .desc { font-size:12px; color:var(--ink-soft); margin-top:5px; line-height:1.6; }
+  .tile .icon { font-size:24px; margin-bottom:10px; display:block; }
+  .tile .name { font-weight:600; font-size:16px; }
+  .tile .desc { font-size:13px; color:var(--ink-soft); margin-top:5px; line-height:1.6; }
   .tile.disabled { color:#B7BEC7; pointer-events:none; background:#FAFAFA; }
   .tile.disabled .desc { color:#C3C9D0; }
   .tile .badge { font-size:10.5px; color:var(--accent); margin-top:8px; font-weight:600; }
@@ -61,8 +65,9 @@
 </head>
 <body>
   <div class="masthead">
-    <img class="logo" src="logo.png" alt="شعار الشركة المصرية لنقل الكهرباء">
-    <h1>منظومة الإدارة العامة لشئون مجلس الإدارة</h1>
+    <img class="logo" src="logo.png" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:90px;height:90px;">
+    <h1 style="font-size:24px;margin-bottom:8px;">الشركة المصرية لنقل الكهرباء</h1>
+    <h1 style="font-size:22px;margin-top:0;">الإدارة العامة لشئون مجلس الإدارة</h1>
     <div class="user" id="userBox"></div>
     <div class="top-nav" id="topNavHome"></div>
   </div>
@@ -92,23 +97,20 @@
         <div class="name">الجلسات والرول</div>
         <div class="desc">إنشاء جلسة، ترتيب الرول، الطباعة</div>
       </a>
-      <a class="tile disabled" href="#" data-perm="ManageDecisions">
+      <a class="tile" href="decisions.html" data-perm="ManageDecisions">
         <span class="icon">✅</span>
         <div class="name">القرارات</div>
         <div class="desc">جدول القرارات والقرارات التنفيذية</div>
-        <div class="badge">قريبًا</div>
       </a>
-      <a class="tile disabled" href="#" data-perm="ManageFollowUps">
+      <a class="tile" href="followups.html" data-perm="ManageFollowUps">
         <span class="icon">🔄</span>
         <div class="name">المتابعة</div>
         <div class="desc">متابعة تنفيذ القرارات</div>
-        <div class="badge">قريبًا</div>
       </a>
-      <a class="tile disabled" href="#" data-perm="ViewDashboardSearch">
+      <a class="tile" href="archive.html" data-perm="ViewDashboardSearch">
         <span class="icon">📁</span>
         <div class="name">الأرشيف</div>
         <div class="desc">بحث متقدم في كل البيانات والمستندات</div>
-        <div class="badge">قريبًا</div>
       </a>
       <a class="tile" href="settings.html" data-perm-any="ManageSettings,ManageUsers">
         <span class="icon">⚙️</span>
@@ -117,9 +119,13 @@
       </a>
     </div>
   </div>
+  <div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:20px;">
+    تصميم وتنفيذ أحمد أسامة حميده
+  </div>
 
 <script src="js/api.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/arabic.js"></script>
 <script>
 API.requireLogin();
 renderTopNav('home');
@@ -151,17 +157,33 @@ function renderUserBox() {
   const user = API.getUser();
   const box = document.getElementById('userBox');
   if (!user) return;
-  box.innerHTML = `${esc(user.FullName)} &nbsp;·&nbsp; <a onclick="API.logout()">تسجيل الخروج</a>`;
+  box.innerHTML = `المستخدم الحالي: ${esc(user.FullName)} &nbsp;·&nbsp; <a href="logout.html">تسجيل الخروج</a>`;
 }
 
 async function loadDashboard() {
   try {
     const d = await API.call('getDashboardSummary');
     document.getElementById('dash').innerHTML = `
-      <div class="cell"><div class="num">${d.meetingsCount}</div><div class="lbl">الجلسات</div></div>
-      <div class="cell"><div class="num">${d.memosCount}</div><div class="lbl">إجمالي المذكرات</div></div>
-      <div class="cell"><div class="num">${d.availableMemosCount}</div><div class="lbl">مذكرات متاحة</div></div>
-      <div class="cell"><div class="num">${d.decisionsCount || '—'}</div><div class="lbl">القرارات</div></div>`;
+      <div class="cell clickable" onclick="goToRollWithAvailable()">
+        <div class="num">${d.totalAvailableMemos || d.availableMemosCount || 0}</div>
+        <div class="lbl">إجمالي المذكرات</div>
+        <div class="sublbl">جميع المذكرات الواردة التي تنتظر العرض في الجلسات</div>
+      </div>
+      <div class="cell clickable" onclick="goToCurrentMeeting()">
+        <div class="num">${d.currentMeeting && d.currentMeeting.SessionNumber ? d.currentMeeting.SessionNumber : '—'}</div>
+        <div class="lbl">الجلسة الحالية رقم</div>
+        <div class="sublbl">بتاريخ: ${d.currentMeeting && d.currentMeeting.SessionDate ? AR.formatDate(d.currentMeeting.SessionDate) : '—'}</div>
+      </div>
+      <div class="cell">
+        <div class="num">${d.lateMemosCount || 0}</div>
+        <div class="lbl">مذكرات متأخرة</div>
+        <div class="sublbl">التي مر على تاريخ الوارد لها أكثر من 7 أيام</div>
+      </div>
+      <div class="cell clickable" onclick="location.href='followups.html'">
+        <div class="num">${d.followUpsCount || 0}</div>
+        <div class="lbl">المتابعة</div>
+        <div class="sublbl">الموضوعات التي تحتاج لمتابعة</div>
+      </div>`;
   } catch (e) {
     document.getElementById('dash').innerHTML = `<div class="cell" style="grid-column:1/-1;color:#B3261E">تعذّر تحميل الأرقام: ${esc(e.message)}</div>`;
   }
@@ -182,6 +204,32 @@ async function runSearch() {
       : '<div style="color:var(--ink-soft);padding:6px 0">لا توجد نتائج مطابقة.</div>';
   } catch (e) {
     box.innerHTML = `<div style="color:#B3261E">خطأ: ${esc(e.message)}</div>`;
+  }
+}
+
+function goToCurrentMeeting() {
+  loadDashboard().then(async () => {
+    const d = await API.call('getDashboardSummary');
+    if (d.currentMeeting && d.currentMeeting.MeetingID) {
+      location.href = 'roll.html?id=' + encodeURIComponent(d.currentMeeting.MeetingID);
+    } else {
+      location.href = 'meetings.html';
+    }
+  });
+}
+
+async function goToRollWithAvailable() {
+  try {
+    const meetings = await API.call('listMeetings');
+    if (meetings && meetings.length) {
+      // Use most recent meeting
+      const m = meetings[0];
+      location.href = 'roll.html?id=' + encodeURIComponent(m.MeetingID);
+    } else {
+      location.href = 'meetings.html';
+    }
+  } catch (e) {
+    location.href = 'meetings.html';
   }
 }
 
