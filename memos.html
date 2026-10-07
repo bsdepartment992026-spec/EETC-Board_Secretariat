@@ -105,11 +105,17 @@ async function loadOrganizations() {
   if (!orgs.length) sel.innerHTML = '<option value="">لا توجد جهات — أضِفها من الإعدادات أولًا</option>';
 }
 
+const MAX_FILE_MB = 15;
+
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      reject(new Error(`الملف كبير جدًا (${(file.size / 1024 / 1024).toFixed(1)} ميجا). الحد الأقصى ${MAX_FILE_MB} ميجا حاليًا.`));
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('تعذّرت قراءة الملف من جهازك. جرّب ملفًا آخر.'));
     reader.readAsDataURL(file);
   });
 }
@@ -154,7 +160,7 @@ async function saveMemo() {
     document.getElementById('notes').value = '';
     document.getElementById('scanFile').value = '';
   } catch (e) {
-    toast('خطأ: ' + e.message);
+    toast('خطأ: ' + (e && e.message ? e.message : 'حدث خطأ غير متوقع، جرّب مرة أخرى.'));
   } finally {
     btn.disabled = false;
     btn.textContent = 'حفظ المذكرة';
