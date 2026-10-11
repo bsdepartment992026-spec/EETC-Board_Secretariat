@@ -6,7 +6,7 @@
 const NAV_ITEMS = [
   { key: 'home', href: 'index.html', icon: '🏠', label: 'الشاشة الرئيسية', perm: null },
   { key: 'memos', href: 'memos.html', icon: '📄', label: 'المذكرات', perm: 'ManageMemos' },
-  { key: 'pool', href: 'meetings.html', icon: '📑', label: 'إجمالي المذكرات', perm: 'ManageMeetings', action: 'latestRoll' },
+  { key: 'pool', href: 'pool.html', icon: '📑', label: 'إجمالي المذكرات', perm: 'ManageMeetings' },
   { key: 'meetings', href: 'meetings.html', icon: '🗓️', label: 'الجلسات', perm: 'ManageMeetings' },
   { key: 'agenda', href: 'meetings.html', icon: '📋', label: 'جدول الأعمال', perm: 'ManageMeetings', action: 'latestRoll' },
   { key: 'decisions', href: 'decisions.html', icon: '✅', label: 'القرارات', perm: 'ManageDecisions' },
