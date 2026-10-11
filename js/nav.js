@@ -37,15 +37,12 @@ function renderTopNav(activeKey) {
     let html = NAV_ITEMS.filter(function (it) { return hasPerm(it.perm); }).map(function (it) {
       const isActive = it.key === activeKey;
       const click = it.action === 'latestRoll' ? ' onclick="navOpenLatestRoll();return false;"' : '';
-      return `<a class="nav-icon ${isActive ? 'active' : ''}"
-        href="${it.href}"${click}>
-        <span>${it.icon}</span><small>${it.label}</small>
-      </a>`;
+      return `<a class="nav-icon ${isActive ? 'active' : ''}" href="${it.href}"${click}`
+        + ` title="${it.label}" aria-label="${it.label}"><span>${it.icon}</span></a>`;
     }).join('');
     // أيقونة تسجيل الخروج (رمز مثل باقي الأيقونات)
-    html += `<a class="nav-icon" href="javascript:void(0)" onclick="API.logout()" title="تسجيل الخروج">
-      <span>🚪</span><small>تسجيل الخروج</small>
-    </a>`;
+    html += `<a class="nav-icon" href="javascript:void(0)" onclick="API.logout()"`
+      + ` title="تسجيل الخروج" aria-label="تسجيل الخروج"><span>🚪</span></a>`;
 
     document.querySelectorAll('.top-nav').forEach(function (el) { el.innerHTML = html; });
   } catch (e) {
@@ -57,18 +54,22 @@ function renderTopNav(activeKey) {
 (function injectNavStyles() {
   const style = document.createElement('style');
   style.textContent = `
-    .topbar { background:#1B2A41; color:#fff; padding:10px 20px; display:flex;
+    .topbar { background:#1B2A41; color:#fff; padding:8px 14px; display:flex;
               justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
-    .topbar .brand { font-family:'Markazi Text', serif; font-size:16px; display:flex; align-items:center; gap:8px; }
-    .top-nav { display:flex; gap:2px; flex-wrap:wrap; justify-content:flex-end; }
-    .nav-icon { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px;
-                text-decoration:none; color:#C9CFD8; padding:8px 10px; border-radius:6px; font-size:12px;
-                min-width:64px; }
-    .nav-icon span { font-size:20px; line-height:1; height:24px; display:flex; align-items:center; }
-    .nav-icon small { font-size:14px; line-height:1.2; white-space:nowrap; }
-    .nav-icon:hover { background:rgba(255,255,255,.08); color:#fff; }
+    .topbar .brand { font-family:'Markazi Text', serif; font-size:15px; display:flex; align-items:center; gap:6px; }
+    .top-nav { display:flex; gap:2px; flex-wrap:wrap; justify-content:flex-start; }
+    .nav-icon { display:flex; align-items:center; justify-content:center; width:38px; height:38px;
+                text-decoration:none; color:#C9CFD8; border-radius:6px; font-size:19px; line-height:1;
+                transition:background .15s, color .15s; }
+    .nav-icon span { font-size:19px; line-height:1; }
+    .nav-icon:hover { background:rgba(255,255,255,.14); color:#fff; }
     .nav-icon.active { background:#A6802E; color:#fff; }
-
+    @media (max-width:520px) {
+      .topbar { padding:6px 10px; gap:6px; }
+      .topbar .brand { font-size:13px; }
+      .nav-icon { width:34px; height:34px; font-size:17px; }
+      .nav-icon span { font-size:17px; }
+    }
   `;
   document.head.appendChild(style);
 })();
