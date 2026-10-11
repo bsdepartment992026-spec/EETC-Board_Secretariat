@@ -84,7 +84,6 @@
     .actions { width:100%; }
     .item { padding:12px; gap:10px; }
     .panel { overflow-x:auto; }
-    #poolTable { min-width:600px; }
     th, td { padding:8px 10px; }
   }
 </style>
@@ -106,26 +105,10 @@
       <div class="actions">
         <button class="accent" id="approveBtn" onclick="openApprove()">اعتماد الرول</button>
         <button class="primary" onclick="printRoll()">🖨️ طباعة الرول</button>
+        <button class="ghost" onclick="location.href='pool.html'">📑 إجمالي المذكرات</button>
         <button class="ghost" onclick="location.href='minutes.html?id='+encodeURIComponent(MID)">📝 محضر الجلسة</button>
         <button class="danger-ghost" onclick="deleteMeeting()">حذف الجلسة</button>
       </div>
-    </div>
-
-    <h2 id="totalTitle">إجمالي المذكرات</h2>
-    <p class="lead">كل المذكرات التي لم تدخل أي جلسة بعد. حدّد ما تريد إدراجه ثم انقله للرول.</p>
-    <div class="panel">
-      <div class="panel-toolbar">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px">
-          <input type="checkbox" id="selectAllPool" onchange="toggleSelectAll(this)"> تحديد الكل
-        </label>
-        <span class="grow"></span>
-        <button class="ghost small" onclick="printTotal()">🖨️ طباعة إجمالي المذكرات</button>
-        <button class="primary small" onclick="transferSelected()">نقل المحدد إلى الرول</button>
-        <button class="accent small" onclick="transferAll()">نقل جميع المذكرات إلى الرول</button>
-      </div>
-      <table id="poolTable"><thead><tr>
-        <th></th><th>م</th><th>الموضوع</th><th>تاريخ صادر</th><th>رقم صادر</th><th>الحالة</th>
-      </tr></thead><tbody id="poolRows"></tbody></table>
     </div>
 
     <h2 id="rollTitle">جدول الأعمال</h2>
@@ -163,9 +146,8 @@ if (!API.hasPermission('ManageMeetings')) {
 const MID = new URLSearchParams(location.search).get('id');
 if (!MID) location.href = 'meetings.html';
 
-const S = { meeting: null, items: [], pool: [], settings: [], meetings: [] };
+const S = { meeting: null, items: [], settings: [], meetings: [] };
 const E = AR.esc;
-const selected = new Set();
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -178,22 +160,20 @@ async function run(fn) {
 
 /* ---------------- تحميل ---------------- */
 async function loadAll() {
-  const [roll, pool, settings, meetings] = await Promise.all([
+  const [roll, settings, meetings] = await Promise.all([
     API.call('getMeetingRoll', { MeetingID: MID }),
-    API.call('getAvailableMemosDetailed'),
     API.call('listSettings'),
     API.call('listMeetings')
   ]);
-  S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.settings = settings; S.meetings = meetings;
+  S.meeting = roll.meeting; S.items = roll.items; S.settings = settings; S.meetings = meetings;
   renderAll();
 }
 async function refresh() {
-  const [roll, pool, meetings] = await Promise.all([
+  const [roll, meetings] = await Promise.all([
     API.call('getMeetingRoll', { MeetingID: MID }),
-    API.call('getAvailableMemosDetailed'),
     API.call('listMeetings')
   ]);
-  S.meeting = roll.meeting; S.items = roll.items; S.pool = pool; S.meetings = meetings;
+  S.meeting = roll.meeting; S.items = roll.items; S.meetings = meetings;
   renderAll();
 }
 
@@ -207,7 +187,7 @@ function typeSelect(id, selected, onchange) {
     `</select>`;
 }
 
-function renderAll() { renderHead(); renderPool(); renderRoll(); renderSpecial(); }
+function renderAll() { renderHead(); renderRoll(); renderSpecial(); }
 
 function renderHead() {
   const m = S.meeting;
@@ -221,68 +201,10 @@ function renderHead() {
   document.getElementById('timeInput').value = m.SessionTime || '';
   document.getElementById('approveBtn').textContent = m.SessionNumber ? 'تعديل رقم الجلسة' : 'اعتماد الرول';
 
-  const today = new Date();
-  document.getElementById('totalTitle').textContent =
-    `إجمالي المذكرات حتى ${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
   document.getElementById('rollTitle').textContent = m.SessionNumber
     ? `جدول أعمال الجلسة ${AR.ordinal(m.SessionNumber, false)} لسنة ${AR.year(m.SessionDate)} المنعقدة بتاريخ ${AR.formatDate(m.SessionDate)}`
     : `جدول أعمال الجلسة (بدون رقم بعد) — ${AR.formatDate(m.SessionDate)}`;
 }
-
-/* ---------------- إجمالي المذكرات ---------------- */
-function renderPool() {
-  const box = document.getElementById('poolRows');
-  if (!S.pool.length) { box.innerHTML = '<tr><td colspan="6" class="empty">لا توجد مذكرات متاحة. سجّلها من شاشة "المذكرات".</td></tr>'; return; }
-
-  const groups = {}; const order = [];
-  S.pool.forEach(m => {
-    const key = m.OrgName || 'بدون جهة';
-    if (!(key in groups)) { groups[key] = []; order.push(key); }
-    groups[key].push(m);
-  });
-
-  let n = 0, html = '';
-  order.forEach(orgName => {
-    html += `<tr class="group-row"><td colspan="6">${E(orgName)}</td></tr>`;
-    groups[orgName].forEach(m => {
-      n++;
-      const chip = m.DeferredFromSession ? `<span class="status-chip">${E(m.StatusLabel)}</span>` : `<span class="status-chip new">جديدة</span>`;
-      html += `<tr>
-        <td><input type="checkbox" class="poolCheck" value="${m.MemoID}" ${selected.has(m.MemoID) ? 'checked' : ''} onchange="onPoolCheck(this)"></td>
-        <td>${n}</td>
-        <td>${E(m.Subject)}</td>
-        <td>${AR.formatDate(m.ChairmanOutgoingDate)}</td>
-        <td>${E(m.ChairmanOutgoingNo)}</td>
-        <td>${chip}</td>
-      </tr>`;
-    });
-  });
-  box.innerHTML = html;
-}
-function onPoolCheck(cb) { cb.checked ? selected.add(cb.value) : selected.delete(cb.value); }
-function toggleSelectAll(master) {
-  document.querySelectorAll('.poolCheck').forEach(cb => { cb.checked = master.checked; onPoolCheck(cb); });
-}
-function transferSelected() {
-  if (!selected.size) { toast('حدّد مذكرة واحدة على الأقل'); return; }
-  run(async () => {
-    await API.call('addRollMemosBulk', { MeetingID: MID, MemoIDs: Array.from(selected) });
-    selected.clear();
-    toast('تم نقل المذكرات المحددة إلى الرول');
-    await refresh();
-  });
-}
-function transferAll() {
-  if (!S.pool.length) { toast('لا توجد مذكرات متاحة'); return; }
-  if (!confirm(`نقل كل المذكرات الـ ${S.pool.length} إلى الرول؟`)) return;
-  run(async () => {
-    await API.call('addRollMemosBulk', { MeetingID: MID, MemoIDs: S.pool.map(m => m.MemoID) });
-    selected.clear();
-    toast('تم نقل كل المذكرات إلى الرول');
-    await refresh();
-  });
-}
-function printTotal() { window.open('total-print.html', '_blank'); }
 
 /* ---------------- جدول الرول ---------------- */
 function renderRoll() {
