@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>أرشيف قرارات الجلسات — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --success:#1F7A4D; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .wrap { max-width:1150px; margin:0 auto; padding:24px; }
+
+  h2 { font-family:'Markazi Text', serif; font-size:22px; margin:0 0 4px; }
+  .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 16px; }
+  .cnt { font-size:12.5px; color:var(--ink-soft); font-weight:400; }
+
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:16px; }
+
+  .filters { display:flex; flex-wrap:wrap; gap:8px; padding:12px 14px; background:#FAFAF9; border-bottom:1px solid var(--line); align-items:center; }
+  .filters .field { padding:7px 9px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:12.5px; background:#fff; }
+  .filters .field.date { width:150px; }
+  .filters .field.small { width:130px; }
+  .filters .field.grow { flex:1; min-width:180px; }
+  .filters label.chk { font-size:12px; color:var(--ink-soft); }
+  .filters .sep { width:1px; align-self:stretch; background:var(--line); margin:0 2px; }
+
+  .toolbar { display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); align-items:center; flex-wrap:wrap; }
+  .toolbar .grow { flex:1; }
+
+  button { font-family:inherit; cursor:pointer; border:none; border-radius:5px; font-size:12.5px; font-weight:600; padding:8px 14px; }
+  button.primary { background:var(--ink); color:#fff; } button.primary:hover { background:#0F1A2C; }
+  button.accent { background:var(--accent); color:#fff; } button.accent:hover { background:#8C6C25; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } button.ghost:hover { background:var(--paper); }
+  button.small { padding:6px 11px; font-size:12px; }
+  button:disabled { opacity:.5; cursor:default; }
+
+  .table-scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; }
+  th { text-align:right; font-size:11px; color:var(--ink-soft); font-weight:600; padding:9px 8px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; white-space:nowrap; }
+  td { padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  th.c, td.c { width:56px; text-align:center; white-space:nowrap; }
+  th.s, td.s { width:80px; text-align:center; white-space:nowrap; }
+  th.d, td.d { width:95px; text-align:center; white-space:nowrap; }
+  th.n, td.n { width:64px; text-align:center; white-space:nowrap; }
+  th.e, td.e { width:150px; }
+  th.p, td.p { width:150px; }
+  tr:hover td { background:#FBFBF9; }
+  .subj { font-size:13px; line-height:1.65; word-wrap:break-word; }
+  .muted { color:var(--ink-soft); }
+  .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  .pager { display:flex; gap:10px; align-items:center; justify-content:center; padding:12px; border-top:1px solid var(--line); background:#FAFAF9; }
+  .pager .info { font-size:12.5px; color:var(--ink-soft); }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:20; }
+
+  @media (max-width:700px) {
+    .wrap { padding:16px 12px; }
+    h2 { font-size:19px; }
+    .filters { padding:10px; gap:6px; }
+    .filters .field, .filters .field.date, .filters .field.small, .filters .field.grow { width:100%; }
+    .filters .sep { display:none; }
+    .filters button { flex:1; }
+    .toolbar { padding:8px 10px; }
+    .toolbar button { flex:1; }
+    .toolbar .grow { display:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar"><div class="brand">📁 أرشيف قرارات الجلسات</div><div class="top-nav"></div></div>
+
+  <div class="wrap">
+    <h2>أرشيف قرارات الجلسات</h2>
+    <p class="lead">استعراض وبحث قرارات الجلسات السابقة — للقراءة فقط.</p>
+
+    <div class="panel">
+      <div class="filters">
+        <select class="field small" id="fYear" title="السنة"><option value="">كل السنوات</option></select>
+        <select class="field small" id="fSession" title="رقم الجلسة"><option value="">كل الجلسات</option></select>
+        <span class="sep"></span>
+        <input class="field date" type="date" id="fFrom" title="من تاريخ">
+        <input class="field date" type="date" id="fTo" title="إلى تاريخ">
+        <input class="field small" type="text" id="fEntity" placeholder="الجهة" title="الجهة (جهة عرض المذكرة)">
+        <input class="field grow" type="text" id="fText" placeholder="بحث: موضوع / رقم مذكرة / جلسة" title="بحث نصي">
+        <button class="primary small" onclick="doSearch(true)">🔍 بحث</button>
+        <button class="ghost small" onclick="clearFilters()">مسح</button>
+      </div>
+
+      <div class="toolbar">
+        <span class="grow cnt" id="count"></span>
+        <button class="ghost small" onclick="printResults()">🖨️ طباعة النتائج</button>
+        <button class="accent small" onclick="exportExcel()">📥 تصدير Excel</button>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th class="c">السنة</th>
+            <th class="c">الجلسة</th>
+            <th class="d">التاريخ</th>
+            <th class="n">رقم المذكرة</th>
+            <th>الموضوع</th>
+            <th class="e">جهة العرض</th>
+            <th class="p">مسار القرار</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="7" class="empty">جارٍ التحميل...</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <button class="ghost small" id="prevBtn" onclick="gotoPage(S.page - 1)">السابق</button>
+        <span class="info" id="pageInfo"></span>
+        <button class="ghost small" id="nextBtn" onclick="gotoPage(S.page + 1)">التالي</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script src="js/nav.js"></script>
+<script>
+API.requireLogin();
+renderTopNav('archive');
+if (!API.hasPermission('ViewDashboardSearch')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
+const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [] };
+const E = AR.esc;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2800);
+}
+async function run(fn) { try { await fn(); } catch (e) { toast('خطأ: ' + e.message); } }
+function val(id) { return document.getElementById(id).value.trim(); }
+function filters() {
+  return {
+    Year: val('fYear'),
+    SessionNumber: val('fSession'),
+    DateFrom: val('fFrom'),
+    DateTo: val('fTo'),
+    Entity: val('fEntity'),
+    q: val('fText')
+  };
+}
+
+/* ---------------- التهيئة ---------------- */
+async function loadFacets() {
+  const f = await API.call('listArchiveFacets');
+  document.getElementById('fYear').innerHTML =
+    '<option value="">كل السنوات</option>' + f.years.map(y => `<option value="${E(y)}">${E(y)}</option>`).join('');
+  document.getElementById('fSession').innerHTML =
+    '<option value="">كل الجلسات</option>' + f.sessions.map(s => `<option value="${E(s)}">${E(s)}</option>`).join('');
+}
+
+async function doSearch(resetPage) {
+  if (resetPage) S.page = 1;
+  const p = Object.assign(filters(), { page: S.page, pageSize: S.pageSize });
+  const res = await API.call('searchArchive', p);
+  S.items = res.items; S.total = res.total; S.page = res.page; S.pageCount = res.pageCount;
+  render();
+}
+
+function clearFilters() {
+  ['fYear', 'fSession', 'fFrom', 'fTo', 'fEntity', 'fText'].forEach(id => document.getElementById(id).value = '');
+  doSearch(true);
+}
+function gotoPage(p) {
+  if (p < 1 || p > S.pageCount) return;
+  S.page = p; run(() => doSearch(false));
+}
+
+/* ---------------- العرض ---------------- */
+function render() {
+  const box = document.getElementById('rows');
+  document.getElementById('count').textContent =
+    S.total ? `إجمالي النتائج: ${S.total} قرار` : '';
+
+  if (!S.items.length) {
+    box.innerHTML = '<tr><td colspan="7" class="empty">لا توجد نتائج مطابقة. جرّب تعديل معايير البحث.</td></tr>';
+  } else {
+    box.innerHTML = S.items.map(r => {
+      const date = AR.formatDate(r.SessionDate);
+      const note = r.Notes ? ` title="${E(String(r.Notes))}"` : '';
+      return `<tr${note}>
+        <td class="c">${E(r.Year)}</td>
+        <td class="c">${E(r.SessionNumber) || '<span class="muted">—</span>'}</td>
+        <td class="d">${E(date)}</td>
+        <td class="n">${E(r.MemoNumber)}</td>
+        <td><div class="subj">${E(r.Subject)}</div></td>
+        <td class="e">${E(r.PresentingEntity) || '<span class="muted">—</span>'}</td>
+        <td class="p">${E(r.DecisionPath) || '<span class="muted">—</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('pageInfo').textContent =
+    (S.total ? `صفحة ${S.page} من ${S.pageCount}` : '');
+  document.getElementById('prevBtn').disabled = S.page <= 1;
+  document.getElementById('nextBtn').disabled = S.page >= S.pageCount;
+}
+
+/* ---------------- التصدير ---------------- */
+async function exportExcel() {
+  toast('جارٍ تجهيز ملف الإكسيل...');
+  const res = await API.call('exportArchive', filters());
+  const a = document.createElement('a');
+  a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + res.base64;
+  a.download = res.filename || 'archive.xlsx';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('تم تجهيز الملف ✅');
+}
+
+/* ---------------- الطباعة ---------------- */
+async function printResults() {
+  const res = await API.call('searchArchive', Object.assign(filters(), { page: 1, pageSize: 500 }));
+  const rows = res.items.map(r => `<tr>
+      <td class="c">${E(r.Year)}</td>
+      <td class="c">${E(r.SessionNumber) || '—'}</td>
+      <td class="d">${E(AR.formatDate(r.SessionDate))}</td>
+      <td class="n">${E(r.MemoNumber)}</td>
+      <td>${E(r.Subject)}</td>
+      <td class="e">${E(r.PresentingEntity) || '—'}</td>
+      <td class="p">${E(r.DecisionPath) || '—'}</td>
+    </tr>`).join('');
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+    <title>أرشيف قرارات الجلسات</title>
+    <style>
+      body{font-family:'Cairo',Arial,sans-serif;padding:16px;color:#1B2A41;}
+      h2{font-size:20px;margin:0 0 4px;}
+      .meta{font-size:12px;color:#4B5768;margin-bottom:12px;}
+      table{width:100%;border-collapse:collapse;font-size:11.5px;}
+      th,td{border:1px solid #999;padding:5px 6px;vertical-align:top;text-align:right;}
+      th{background:#EEE;font-size:11px;}
+      td.c,td.d,td.n{text-align:center;white-space:nowrap;}
+      @media print{ @page{ size:A4 landscape; margin:10mm; } }
+    </style></head><body>
+    <h2>أرشيف قرارات الجلسات</h2>
+    <div class="meta">عدد النتائج: ${res.total} — بتاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div>
+    <table><thead><tr>
+      <th>السنة</th><th>الجلسة</th><th>التاريخ</th><th>رقم المذكرة</th>
+      <th>الموضوع</th><th>جهة العرض</th><th>مسار القرار</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    </body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 400);
+}
+
+run(async () => { await loadFacets(); await doSearch(true); });
+</script>
+<div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:40px;border-top:1px solid #E2E5EA;">تصميم وتنفيذ أحمد أسامة حميده</div>
+</body>
+</html>
