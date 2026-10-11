@@ -76,6 +76,17 @@
   .modal input { width:100%; padding:11px; border:1px solid var(--line); border-radius:5px; font-size:20px; text-align:center; font-family:inherit; }
   .modal .btns { display:flex; gap:8px; margin-top:16px; justify-content:flex-start; }
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:30; }
+
+  @media (max-width:700px) {
+    .wrap { padding:16px 12px; }
+    .head { padding:14px 16px; }
+    .head h1 { font-size:20px; }
+    .actions { width:100%; }
+    .item { padding:12px; gap:10px; }
+    .panel { overflow-x:auto; }
+    #poolTable { min-width:600px; }
+    th, td { padding:8px 10px; }
+  }
 </style>
 </head>
 <body>

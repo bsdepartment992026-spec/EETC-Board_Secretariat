@@ -37,6 +37,17 @@
   .sub { font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
   .empty { padding:34px; text-align:center; color:var(--ink-soft); font-size:13px; }
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:10; }
+
+  @media (max-width:640px) {
+    .wrap { padding:18px 14px; }
+    .add-row { gap:8px; }
+    .add-row > div, .add-row button { width:100%; }
+    .add-row input { width:100%; }
+    .panel { overflow-x:auto; }
+    table { min-width:520px; }
+    th, td { padding:10px 12px; }
+    h2 { font-size:20px; }
+  }
 </style>
 </head>
 <body>

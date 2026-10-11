@@ -66,6 +66,14 @@
   .decision-box.empty { color:var(--ink-soft); font-style:italic; }
 
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:10; }
+
+  @media (max-width:640px) {
+    .wrap { padding:16px 12px; }
+    .head { flex-direction:column; align-items:stretch; }
+    .head button { width:100%; }
+    .files-row .lbl { width:auto; }
+    h2 { font-size:18px; }
+  }
 </style>
 </head>
 <body>
