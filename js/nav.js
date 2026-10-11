@@ -14,28 +14,33 @@ const NAV_ITEMS = [
 ];
 
 function renderTopNav(activeKey) {
-  const user = API.getUser();
-  const hasPerm = function (perm) {
-    if (!perm) return true;
-    if (!user) return false;
-    if (Array.isArray(perm)) return perm.some(function (p) { return user.Permissions.includes(p); });
-    return user.Permissions.includes(perm);
-  };
+  try {
+    const user = API.getUser();
+    const perms = (user && Array.isArray(user.Permissions)) ? user.Permissions : [];
+    const hasPerm = function (perm) {
+      if (!perm) return true;
+      if (!user) return false;
+      if (Array.isArray(perm)) return perm.some(function (p) { return perms.indexOf(p) !== -1; });
+      return perms.indexOf(perm) !== -1;
+    };
 
-  const html = NAV_ITEMS.filter(function (it) { return hasPerm(it.perm); }).map(function (it) {
-    const isActive = it.key === activeKey;
-    return `<a class="nav-icon ${isActive ? 'active' : ''}"
-      href="${it.href}">
-      <span>${it.icon}</span><small>${it.label}</small>
+    let html = NAV_ITEMS.filter(function (it) { return hasPerm(it.perm); }).map(function (it) {
+      const isActive = it.key === activeKey;
+      return `<a class="nav-icon ${isActive ? 'active' : ''}"
+        href="${it.href}">
+        <span>${it.icon}</span><small>${it.label}</small>
+      </a>`;
+    }).join('');
+    // إضافة أيقونة تسجيل الخروج
+    html += `<a class="nav-icon" href="javascript:void(0)" onclick="API.logout()" title="تسجيل الخروج">
+      <img src="Logout_37127.png" alt="تسجيل الخروج" style="width:24px;height:24px;opacity:0.9;">
+      <small>تسجيل الخروج</small>
     </a>`;
-  }).join('');
-  // إضافة أيقونة تسجيل الخروج
-  html += `<a class="nav-icon" href="javascript:void(0)" onclick="API.logout()" title="تسجيل الخروج">
-    <img src="Logout_37127.png" alt="تسجيل الخروج" style="width:24px;height:24px;opacity:0.9;">
-    <small>تسجيل الخروج</small>
-  </a>`;
 
-  document.querySelectorAll('.top-nav').forEach(function (el) { el.innerHTML = html; });
+    document.querySelectorAll('.top-nav').forEach(function (el) { el.innerHTML = html; });
+  } catch (e) {
+    console.error('renderTopNav failed:', e);
+  }
 }
 
 /* أنماط مشتركة لشريط التصفح — تُحقن مرة واحدة حتى لا تتكرر في كل صفحة */
