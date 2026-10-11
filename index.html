@@ -22,15 +22,15 @@
   .wrap { max-width:960px; margin:0 auto; padding:0 24px 32px; }
 
   /* الداشبورد */
-  .dash { display:grid; grid-template-columns:repeat(3, 1fr); gap:1px; background:var(--line);
+  .dash { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background:var(--line);
           border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-top:-18px;
           box-shadow:0 4px 14px rgba(27,42,65,.08); }
-  @media (max-width:900px) { .dash { grid-template-columns:repeat(2, 1fr); } }
+  @media (max-width:1100px) { .dash { grid-template-columns:repeat(2, 1fr); } }
   @media (max-width:600px) { .dash { grid-template-columns:1fr; } }
-  .dash .cell { background:var(--surface); padding:22px; text-align:center; min-height:130px; display:flex; flex-direction:column; justify-content:center; }
-  .dash .cell .num { font-family:'Markazi Text', serif; font-size:40px; font-weight:700; color:var(--accent); }
-  .dash .cell .lbl { font-size:16px; color:var(--ink); margin-top:8px; font-weight:600; }
-  .dash .cell .sublbl { font-size:13px; color:var(--ink-soft); margin-top:6px; line-height:1.7; }
+  .dash .cell { background:var(--surface); padding:20px; text-align:center; min-height:110px; display:flex; flex-direction:column; justify-content:center; }
+  .dash .cell .num { font-family:'Markazi Text', serif; font-size:36px; font-weight:700; color:var(--accent); }
+  .dash .cell .lbl { font-size:15px; color:var(--ink); margin-top:6px; font-weight:600; }
+  .dash .cell .sublbl { font-size:12px; color:var(--ink-soft); margin-top:4px; line-height:1.6; }
   .dash .cell.clickable { cursor:pointer; transition:background .15s; }
   .dash .cell.clickable:hover { background:#FAFAF8; }
 
@@ -92,10 +92,20 @@
         <div class="name">المذكرات</div>
         <div class="desc">تسجيل المذكرات الواردة ورفع صورها</div>
       </a>
+      <a class="tile" href="roll.html?id=new" onclick="goToTotalMemos(event)" data-perm="ManageMeetings">
+        <span class="icon">📑</span>
+        <div class="name">إجمالي المذكرات</div>
+        <div class="desc">عرض المذكرات التي تنتظر العرض في الجلسات</div>
+      </a>
       <a class="tile" href="meetings.html" data-perm="ManageMeetings">
+        <span class="icon">➕</span>
+        <div class="name">إضافة جلسة جديدة</div>
+        <div class="desc">إنشاء جلسة وترتيب جدول الأعمال</div>
+      </a>
+      <a class="tile" href="roll.html" onclick="goToLatestAgenda(event)" data-perm="ManageMeetings">
         <span class="icon">📋</span>
-        <div class="name">الجلسات والرول</div>
-        <div class="desc">إنشاء جلسة، ترتيب الرول، الطباعة</div>
+        <div class="name">جدول الأعمال</div>
+        <div class="desc">الدخول لآخر جلسة لرؤية جدول الأعمال</div>
       </a>
       <a class="tile" href="decisions.html" data-perm="ManageDecisions">
         <span class="icon">✅</span>
@@ -162,35 +172,21 @@ async function loadDashboard() {
   try {
     const d = await API.call('getDashboardSummary');
     document.getElementById('dash').innerHTML = `
-      <div class="cell clickable" onclick="goToRollWithAvailable()">
+      <div class="cell">
         <div class="num">${d.totalAvailableMemos || d.availableMemosCount || 0}</div>
         <div class="lbl">إجمالي المذكرات</div>
-        <div class="sublbl">جميع المذكرات الواردة التي تنتظر العرض في الجلسات</div>
       </div>
       <div class="cell clickable" onclick="goToCurrentMeeting()">
         <div class="num">${d.currentMeeting && d.currentMeeting.SessionNumber ? d.currentMeeting.SessionNumber : '—'}</div>
-        <div class="lbl">الجلسة الحالية رقم</div>
-        <div class="sublbl">بتاريخ: ${d.currentMeeting && d.currentMeeting.SessionDate ? AR.formatDate(d.currentMeeting.SessionDate) : '—'}</div>
+        <div class="lbl">الجلسة الحالية</div>
       </div>
       <div class="cell">
         <div class="num">${d.lateMemosCount || 0}</div>
         <div class="lbl">مذكرات متأخرة</div>
-        <div class="sublbl">التي مر على تاريخ الوارد لها أكثر من 7 أيام</div>
       </div>
       <div class="cell clickable" onclick="location.href='followups.html'">
         <div class="num">${d.followUpsCount || 0}</div>
         <div class="lbl">المتابعة</div>
-        <div class="sublbl">الموضوعات التي تحتاج لمتابعة</div>
-      </div>
-      <div class="cell clickable" onclick="location.href='meetings.html'">
-        <div class="num">${d.meetingsCount || 0}</div>
-        <div class="lbl">إضافة جلسة جديدة</div>
-        <div class="sublbl">إنشاء جلسة وترتيب جدول الأعمال</div>
-      </div>
-      <div class="cell clickable" onclick="goToLatestAgenda()">
-        <div class="num">📋</div>
-        <div class="lbl">آخر جدول أعمال</div>
-        <div class="sublbl">الدخول لآخر جلسة لرؤية جدول الأعمال</div>
       </div>`;
   } catch (e) {
     document.getElementById('dash').innerHTML = `<div class="cell" style="grid-column:1/-1;color:#B3261E">تعذّر تحميل الأرقام: ${esc(e.message)}</div>`;
@@ -240,7 +236,23 @@ async function goToRollWithAvailable() {
   }
 }
 
-async function goToLatestAgenda() {
+async function goToLatestAgenda(e) {
+  if (e) e.preventDefault();
+  try {
+    const meetings = await API.call('listMeetings');
+    if (meetings && meetings.length) {
+      const m = meetings[0];
+      location.href = 'roll.html?id=' + encodeURIComponent(m.MeetingID);
+    } else {
+      location.href = 'meetings.html';
+    }
+  } catch (e) {
+    location.href = 'meetings.html';
+  }
+}
+
+async function goToTotalMemos(e) {
+  if (e) e.preventDefault();
   try {
     const meetings = await API.call('listMeetings');
     if (meetings && meetings.length) {
