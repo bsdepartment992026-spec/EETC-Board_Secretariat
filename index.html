@@ -15,15 +15,19 @@
   .masthead { background:var(--ink); color:#fff; padding:22px 28px 18px; text-align:center; }
   .masthead .logo { width:110px; height:110px; margin:0 auto 12px; display:block; }
   .masthead h1 { font-family:'Markazi Text', serif; font-size:22px; margin:0; font-weight:700; line-height:1.4; }
-  .masthead .user { font-size:16px; color:#C9CFD8; margin-top:12px; }
-  .masthead .user a { color:#D8C79A; cursor:pointer; text-decoration:none; }
-  .masthead .top-nav { display:flex; justify-content:center; gap:2px; margin-top:12px; }
+  .userbar { background:var(--surface); border-bottom:1px solid var(--line); padding:10px 28px;
+             display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .userbar .u { font-size:13.5px; color:var(--ink-soft); }
+  .userbar .u b { color:var(--ink); }
+  .userbar .logoutbtn { background:var(--ink); color:#fff; border:none; border-radius:5px;
+             padding:7px 16px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; }
+  .userbar .logoutbtn:hover { background:#0F1A2C; }
 
   .wrap { max-width:960px; margin:0 auto; padding:0 24px 32px; }
 
   /* الداشبورد */
   .dash { display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background:var(--line);
-          border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-top:-18px;
+          border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-top:20px;
           box-shadow:0 4px 14px rgba(27,42,65,.08); }
   @media (max-width:1100px) { .dash { grid-template-columns:repeat(2, 1fr); } }
   @media (max-width:600px) { .dash { grid-template-columns:1fr; } }
@@ -68,8 +72,11 @@
     <img class="logo" src="logo.png" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:90px;height:90px;">
     <h1 style="font-size:24px;margin-bottom:8px;">الشركة المصرية لنقل الكهرباء</h1>
     <h1 style="font-size:22px;margin-top:0;">الإدارة العامة لشئون مجلس الإدارة</h1>
-    <div class="user" id="userBox"></div>
-    <div class="top-nav" id="topNavHome"></div>
+  </div>
+
+  <div class="userbar">
+    <span class="u">المستخدم الحالي: <b id="userName"></b></span>
+    <button class="logoutbtn" onclick="API.logout()">🚪 تسجيل الخروج</button>
   </div>
 
   <div class="wrap">
@@ -132,11 +139,9 @@
 
 
 <script src="js/api.js"></script>
-<script src="js/nav.js"></script>
 <script src="js/arabic.js"></script>
 <script>
 API.requireLogin();
-renderTopNav('home');
 
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -163,9 +168,8 @@ function markDisabled(tile) {
 
 function renderUserBox() {
   const user = API.getUser();
-  const box = document.getElementById('userBox');
-  if (!user) return;
-  box.innerHTML = `المستخدم الحالي: ${esc(user.FullName)}`;
+  const el = document.getElementById('userName');
+  if (el && user) el.textContent = user.FullName;
 }
 
 async function loadDashboard() {
