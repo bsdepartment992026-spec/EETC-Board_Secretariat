@@ -76,5 +76,55 @@ const AR = (function () {
     });
   }
 
-  return { BLANK, ordinal, formatDate, year, dayName, timeWords, composeSpecial, esc };
+  /**
+   * يحوّل الأرقام اللاتينية إلى هندية/عربية (٠-٩).
+   * أي «كلمة» تحتوي حروفًا إنجليزية تُترك كما هي (الأرقام مع النصوص الإنجليزية فقط).
+   */
+  function digits(v) {
+    return String(v == null ? '' : v).replace(/\S+/g, function (tok) {
+      if (/[A-Za-z]/.test(tok)) return tok;
+      return tok.replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[+d]; });
+    });
+  }
+
+  /** يحوّل الأرقام داخل كل النصوص الظاهرة في عنصر (يتجاهل الحقول القابلة للكتابة). */
+  function arabize(root) {
+    if (!root || typeof document === 'undefined') return;
+    const SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, NOSCRIPT: 1 };
+    (function rec(node) {
+      if (node.nodeType === 3) {
+        const nv = node.nodeValue;
+        if (/[0-9]/.test(nv)) { const nv2 = digits(nv); if (nv2 !== nv) node.nodeValue = nv2; }
+        return;
+      }
+      if (node.nodeType !== 1) return;
+      if (SKIP[node.tagName]) return;
+      if (node.hasAttribute && (node.hasAttribute('data-latin') || (node.classList && node.classList.contains('no-ar')))) return;
+      for (let i = 0; i < node.childNodes.length; i++) rec(node.childNodes[i]);
+    })(root);
+  }
+
+  /** يفعّل التحويل التلقائي لكل ما يُعرض لاحقًا (عبر MutationObserver). */
+  function watch() {
+    if (typeof document === 'undefined' || window.__arDigitsWatch) return;
+    window.__arDigitsWatch = true;
+    try {
+      const obs = new MutationObserver(function (muts) {
+        for (let i = 0; i < muts.length; i++) {
+          const m = muts[i];
+          if (m.type === 'childList') {
+            for (let j = 0; j < m.addedNodes.length; j++) arabize(m.addedNodes[j]);
+          } else arabize(m.target);
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+    } catch (e) { /* تجاهل */ }
+    arabize(document.body);
+  }
+  if (typeof document !== 'undefined') {
+    if (document.body) watch();
+    else document.addEventListener('DOMContentLoaded', watch);
+  }
+
+  return { BLANK, ordinal, formatDate, year, dayName, timeWords, composeSpecial, esc, digits, arabize, watch };
 })();
