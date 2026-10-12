@@ -197,7 +197,7 @@ async function loadMeeting(id) {
   renderPhrases();
   render();
   renderStatus();
-  loadDocs();
+  renderDocs(res.docs || []);
 }
 
 function renderStatus() {
@@ -401,10 +401,9 @@ function onFilePick(input) {
   r.readAsDataURL(file);
 }
 
-async function loadDocs() {
-  const docs = await API.call('listDecisionDocs', { MeetingID: S.meetingId });
+function renderDocs(docs) {
   const box = document.getElementById('docs');
-  if (!docs.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  if (!docs || !docs.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
   const cons = docs.filter(d => d.OwnerType === 'Meeting');
   const per = docs.filter(d => d.OwnerType === 'Decision');
   let html = '<h4>مستندات القرارات</h4>';
@@ -414,6 +413,11 @@ async function loadDocs() {
     per.map(d => `<a href="${E(d.Url)}" target="_blank">${E(d.FileName || 'قرار')}</a>`).join('') + '</div>';
   box.innerHTML = html;
   box.style.display = 'block';
+}
+
+async function loadDocs() {
+  const docs = await API.call('listDecisionDocs', { MeetingID: S.meetingId });
+  renderDocs(docs);
 }
 
 run(loadMeetings);
