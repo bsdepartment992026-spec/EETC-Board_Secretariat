@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>قرارات الجلسة — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --success:#1F7A4D; --danger:#B23A3A; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .wrap { max-width:1200px; margin:0 auto; padding:24px; }
+
+  h2 { font-family:'Markazi Text', serif; font-size:22px; margin:0 0 4px; }
+  .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 16px; }
+
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:16px; }
+
+  .toolbar { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line); align-items:center; flex-wrap:wrap; background:#FAFAF9; }
+  .toolbar .grow { flex:1; }
+  .toolbar select.field { padding:7px 9px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:12.5px; background:#fff; }
+  .badge { font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:20px; }
+  .badge.draft { background:var(--accent-soft); color:#8C6C25; }
+  .badge.ok { background:#E4F1EA; color:var(--success); }
+
+  button { font-family:inherit; cursor:pointer; border:none; border-radius:5px; font-size:12.5px; font-weight:600; padding:8px 14px; }
+  button.primary { background:var(--ink); color:#fff; } button.primary:hover { background:#0F1A2C; }
+  button.accent { background:var(--accent); color:#fff; } button.accent:hover { background:#8C6C25; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } button.ghost:hover { background:var(--paper); }
+  button.small { padding:6px 11px; font-size:12px; }
+  button:disabled { opacity:.55; cursor:default; }
+
+  .table-scroll { overflow-x:auto; }
+  table.grid { width:100%; border-collapse:collapse; font-size:13px; min-width:920px; }
+  table.grid th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:9px 8px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; white-space:nowrap; z-index:1; }
+  table.grid td { padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.grid tr:last-child td { border-bottom:none; }
+  th.c, td.c { width:60px; text-align:center; white-space:nowrap; }
+  th.e, td.e { width:170px; }
+  th.n, td.n { width:210px; }
+  td .subj { font-size:12.5px; line-height:1.6; word-wrap:break-word; }
+  td.muted { color:var(--ink-soft); }
+  td textarea { width:100%; min-height:64px; resize:vertical; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:inherit; font-size:12.5px; line-height:1.6; color:var(--ink); }
+  td textarea:focus, td input:focus, .toolbar select.field:focus { outline:none; border-color:var(--accent); }
+  td input.note { width:100%; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:inherit; font-size:12.5px; }
+  .exec-btn { width:100%; text-align:right; background:#fff; border:1px dashed var(--line); color:var(--ink-soft); font-weight:500; padding:7px 9px; border-radius:5px; font-size:12px; white-space:normal; }
+  .exec-btn.has { border-style:solid; color:var(--ink); }
+  .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  .docs { padding:12px 14px; border-top:1px solid var(--line); background:#FAFAF9; font-size:12.5px; }
+  .docs h4 { margin:0 0 8px; font-size:13px; }
+  .docs a { color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--ink-soft); margin-inline-end:14px; display:inline-block; margin-bottom:6px; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:40; max-width:90%; text-align:center; }
+
+  /* Modal */
+  .backdrop { position:fixed; inset:0; background:rgba(27,42,65,.45); display:none; align-items:center; justify-content:center; z-index:30; padding:16px; }
+  .backdrop.show { display:flex; }
+  .modal { background:#fff; border-radius:8px; width:100%; max-width:420px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal-head { padding:12px 14px; border-bottom:1px solid var(--line); font-weight:600; font-size:13.5px; }
+  .modal-head span { color:var(--ink-soft); font-weight:400; font-size:12px; }
+  .modal-body { padding:10px 14px; overflow:auto; }
+  .modal-body label { display:flex; align-items:center; gap:8px; padding:7px 4px; font-size:13px; border-bottom:1px solid #F1F2F4; }
+  .modal-body label:last-child { border-bottom:none; }
+  .modal-body input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent); }
+  .modal-foot { padding:10px 14px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; background:#FAFAF9; }
+
+  @media (max-width:700px) {
+    .wrap { padding:16px 12px; }
+    h2 { font-size:19px; }
+    .toolbar { padding:10px; gap:6px; }
+    .toolbar select.field { width:100%; }
+    .toolbar button { flex:1; }
+    .toolbar .grow { display:none; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar"><div class="brand">✅ القرارات</div><div class="top-nav"></div></div>
+
+  <div class="wrap">
+    <h2>قرارات الجلسة</h2>
+    <p class="lead">قرار لكل بند من بنود جدول الأعمال. رقم القرار = رقم المذكرة في الرول. "جهة التنفيذ" تُختار من الإعدادات.</p>
+
+    <div class="panel">
+      <div class="toolbar">
+        <select class="field" id="meetingSel" onchange="onMeetingChange()"></select>
+        <span class="badge draft" id="statusBadge">مسودة</span>
+        <span class="grow"></span>
+        <select class="field" id="phraseSel" onchange="insertPhrase()" title="جمل القرارات الجاهزة"></select>
+        <button class="ghost" onclick="saveAll(false)">💾 حفظ</button>
+        <button class="ghost" onclick="printDecisions()">🖨️ طباعة القرارات</button>
+        <button class="accent" id="approveBtn" onclick="approve()">✅ اعتماد قرارات الجلسة</button>
+        <button class="ghost" id="uploadBtn" onclick="document.getElementById('fileInput').click()">📎 رفع ملف القرارات المعتمد</button>
+        <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="onFilePick(this)">
+      </div>
+
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr>
+            <th class="c">رقم المذكرة</th>
+            <th>الموضوع</th>
+            <th>القرار</th>
+            <th class="e">جهة التنفيذ</th>
+            <th class="n">ملاحظات</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="5" class="empty">جارٍ التحميل...</td></tr></tbody>
+        </table>
+      </div>
+
+      <div class="docs" id="docs" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="execModal">
+    <div class="modal">
+      <div class="modal-head">جهة التنفيذ <span id="execSubject"></span></div>
+      <div class="modal-body" id="execList"></div>
+      <div class="modal-foot">
+        <button class="ghost small" onclick="closeExec()">إلغاء</button>
+        <button class="primary small" onclick="saveExec()">تم</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script src="js/nav.js"></script>
+<script>
+API.requireLogin();
+renderTopNav('decisions');
+if (!API.hasPermission('ManageDecisions')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
+const S = { meetings: [], meetingId: '', meeting: null, items: [], orgs: [], phrases: [], execMap: {}, approved: false };
+const E = AR.esc;
+let execTarget = null;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 3000);
+}
+async function run(fn) { try { await fn(); } catch (e) { toast('خطأ: ' + e.message); } }
+
+function subjectOf(it) {
+  if (it.MemoID) return it.Subject || '';
+  let s = AR.composeSpecial(it.SpecialTemplate || '', { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+  return (s || '').replace(/\s*0\s*$/, '').trim() || it.SpecialLabel || '';
+}
+
+function meetingLabel(m) {
+  const d = AR.formatDate(m.SessionDate);
+  if (m.SessionNumber != null) return 'الجلسة ' + m.SessionNumber + ' — ' + d;
+  return 'جلسة ' + d;
+}
+
+/* ---------------- التهيئة ---------------- */
+async function loadMeetings() {
+  S.meetings = await API.call('listMeetings');
+  if (!S.meetings.length) {
+    document.getElementById('rows').innerHTML = '<tr><td colspan="5" class="empty">لا توجد جلسات بعد. أنشئ جلسة واعتمد رولها أولًا.</td></tr>';
+    return;
+  }
+  const sel = document.getElementById('meetingSel');
+  sel.innerHTML = S.meetings.map(m => `<option value="${E(m.MeetingID)}">${E(meetingLabel(m))}</option>`).join('');
+  await loadMeeting(S.meetings[0].MeetingID);
+}
+
+async function onMeetingChange() {
+  await loadMeeting(document.getElementById('meetingSel').value);
+}
+
+async function loadMeeting(id) {
+  S.meetingId = id;
+  const res = await API.call('getDecisionsForMeeting', { MeetingID: id });
+  S.meeting = res.meeting;
+  S.orgs = res.orgs || [];
+  S.phrases = res.phrases || [];
+  S.approved = !!res.approved;
+
+  S.items = (res.items || []).map(it => {
+    it._subject = subjectOf(it);
+    return it;
+  });
+  S.execMap = {};
+  S.items.forEach(it => { S.execMap[it.RollItemID] = (it.ExecutingEntityIDs || []).slice(); });
+
+  renderPhrases();
+  render();
+  renderStatus();
+  loadDocs();
+}
+
+function renderStatus() {
+  const b = document.getElementById('statusBadge');
+  if (S.approved) { b.className = 'badge ok'; b.textContent = 'معتمد'; }
+  else { b.className = 'badge draft'; b.textContent = 'مسودة'; }
+}
+
+function renderPhrases() {
+  const sel = document.getElementById('phraseSel');
+  sel.innerHTML = '<option value="">— جمل القرارات الجاهزة —</option>' +
+    S.phrases.map(p => `<option value="${E(p.ItemID)}">${E(p.Label || p.Value)}</option>`).join('');
+}
+
+/* ---------------- العرض ---------------- */
+function render() {
+  const box = document.getElementById('rows');
+  if (!S.items.length) {
+    box.innerHTML = '<tr><td colspan="5" class="empty">لا توجد بنود في رول هذه الجلسة.</td></tr>';
+    return;
+  }
+  box.innerHTML = S.items.map(it => {
+    const id = it.RollItemID;
+    const num = (it.RollNumber === null || it.RollNumber === undefined) ? '—' : it.RollNumber;
+    return `<tr data-roll="${E(id)}">
+      <td class="c">${E(num)}</td>
+      <td><div class="subj">${E(it._subject)}</div></td>
+      <td><textarea id="dec-${E(id)}" placeholder="اكتب نص القرار...">${E(it.DecisionText)}</textarea></td>
+      <td class="e"><button type="button" class="exec-btn" id="execbtn-${E(id)}" onclick="openExec('${E(id)}')"></button></td>
+      <td class="n"><input class="note" id="note-${E(id)}" value="${E(it.ExecNote)}" placeholder="ملاحظات"></td>
+    </tr>`;
+  }).join('');
+  S.items.forEach(it => updateExecBtn(it.RollItemID));
+}
+
+function orgName(orgId) {
+  const o = S.orgs.find(x => x.OrgID === orgId);
+  return o ? o.Name : orgId;
+}
+function updateExecBtn(rollId) {
+  const btn = document.getElementById('execbtn-' + rollId);
+  if (!btn) return;
+  const ids = S.execMap[rollId] || [];
+  if (ids.length) {
+    btn.classList.add('has');
+    const names = ids.map(orgName);
+    btn.textContent = names.length <= 2 ? names.join('، ') : (names.slice(0, 2).join('، ') + ' +' + (names.length - 2));
+  } else {
+    btn.classList.remove('has');
+    btn.textContent = 'اختر الجهات...';
+  }
+}
+
+/* ---------------- جهة التنفيذ (نافذة) ---------------- */
+function openExec(rollId) {
+  execTarget = rollId;
+  const it = S.items.find(x => x.RollItemID === rollId);
+  document.getElementById('execSubject').textContent = '— ' + (it ? it._subject.slice(0, 60) : '');
+  const chosen = S.execMap[rollId] || [];
+  const list = document.getElementById('execList');
+  if (!S.orgs.length) { list.innerHTML = '<div style="padding:10px;color:#4B5768;font-size:13px">لا توجد جهات في الإعدادات.</div>'; }
+  else {
+    list.innerHTML = S.orgs.map(o =>
+      `<label><input type="checkbox" value="${E(o.OrgID)}" ${chosen.indexOf(o.OrgID) !== -1 ? 'checked' : ''}> ${E(o.Name)}</label>`
+    ).join('');
+  }
+  document.getElementById('execModal').classList.add('show');
+}
+function closeExec() { document.getElementById('execModal').classList.remove('show'); execTarget = null; }
+function saveExec() {
+  if (!execTarget) return;
+  const ids = Array.from(document.querySelectorAll('#execList input:checked')).map(c => c.value);
+  S.execMap[execTarget] = ids;
+  updateExecBtn(execTarget);
+  closeExec();
+}
+
+/* ---------------- جمع البيانات ---------------- */
+function collectItems() {
+  return S.items.map(it => ({
+    RollItemID: it.RollItemID,
+    MemoID: it.MemoID || '',
+    DecisionNumber: it.RollNumber,
+    Subject: it._subject,
+    DecisionText: (document.getElementById('dec-' + it.RollItemID) || {}).value || '',
+    Notes: (document.getElementById('note-' + it.RollItemID) || {}).value || '',
+    ExecutingEntityIDs: S.execMap[it.RollItemID] || []
+  }));
+}
+
+async function saveAll(silent) {
+  const items = collectItems();
+  await API.call('saveDecisions', { MeetingID: S.meetingId, items: items });
+  if (!silent) toast('تم الحفظ ✅');
+}
+
+function insertPhrase() {
+  const sel = document.getElementById('phraseSel');
+  const p = S.phrases.find(x => x.ItemID === sel.value);
+  sel.value = '';
+  if (!p) return;
+  const ta = document.activeElement;
+  const target = (ta && ta.tagName === 'TEXTAREA' && /^dec-/.test(ta.id)) ? ta : document.querySelector('textarea[id^="dec-"]');
+  if (!target) return;
+  target.value = (target.value ? target.value.replace(/\s*$/, '') + '\n' : '') + (p.Value || p.Label);
+  target.focus();
+}
+
+/* ---------------- الطباعة ---------------- */
+function printDecisions() {
+  const items = collectItems();
+  const rows = items.map(r => `<tr>
+      <td class="n">${r.DecisionNumber === null || r.DecisionNumber === undefined ? '' : E(String(r.DecisionNumber))}</td>
+      <td>${E(r.Subject)}</td>
+      <td class="d">${E(String(r.DecisionText || '')).replace(/\n/g, '<br>')}</td>
+    </tr>`).join('');
+  const words = AR.ordinal(S.meeting.SessionNumber);
+  const year = AR.year(S.meeting.SessionDate);
+  const date = AR.formatDate(S.meeting.SessionDate);
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <title>قرارات الجلسة</title>
+  <style>
+    body{font-family:'Cairo','Arial',sans-serif;color:#111;margin:0;padding:14mm 12mm;}
+    table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    thead{display:table-header-group;}
+    tr{page-break-inside:avoid;}
+    th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;text-align:right;}
+    tr.hd th{border:none;padding:0 0 8px;text-align:center;}
+    .org{font-size:15px;font-weight:700;}
+    .org2{font-size:14px;font-weight:700;}
+    .hr{font-size:12px;letter-spacing:1px;}
+    .ttl{font-size:19px;font-weight:700;margin-top:4px;}
+    .sub{font-size:13px;}
+    th.col{background:#EFEFEF;font-size:12px;text-align:center;}
+    th.n,td.n{width:70px;text-align:center;white-space:nowrap;}
+    .wm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;pointer-events:none;}
+    .wm span{font-size:78px;font-weight:700;font-style:italic;color:rgba(27,42,65,.07);transform:rotate(-45deg);white-space:nowrap;}
+    @media print{ @page{ size:A4 portrait; margin:12mm; } }
+  </style></head><body>
+  <div class="wm"><span>قرارات مجلس الإدارة</span></div>
+  <table>
+    <thead>
+      <tr class="hd"><th colspan="3">
+        <div class="org">الشركة المصرية لنقل الكهرباء</div>
+        <div class="org2">مجلس الإدارة</div>
+        <div class="hr">ــــــــــــــــــــ</div>
+        <div class="ttl">" القرارات "</div>
+        <div class="sub">الصادرة في المسائل التي تضمنها جدول أعمال</div>
+        <div class="sub">الجلسة ${E(words)} لسنة ${E(year)}</div>
+        <div class="sub">المنعقدة بتاريخ ${E(date)}</div>
+      </th></tr>
+      <tr><th class="col n">رقم المذكرة</th><th class="col">الموضوع</th><th class="col">القرار</th></tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </body></html>`);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 500);
+}
+
+/* ---------------- الاعتماد والرفع ---------------- */
+async function approve() {
+  if (!confirm('سيتم اعتماد قرارات الجلسة وتوليد ملفات PDF (المجمّع + قرار لكل مذكرة). هل تريد المتابعة؟')) return;
+  const btn = document.getElementById('approveBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ الاعتماد...';
+  try {
+    await saveAll(true);
+    const res = await API.call('approveDecisions', { MeetingID: S.meetingId });
+    toast('تم الاعتماد ✅ — ' + (res.perDecision ? res.perDecision.length : 0) + ' قرار');
+    await loadMeeting(S.meetingId);
+  } catch (e) {
+    toast('خطأ: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '✅ اعتماد قرارات الجلسة';
+  }
+}
+
+function onFilePick(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = async function () {
+    const b64 = String(r.result).split(',')[1];
+    try {
+      await API.call('uploadDecisionConsolidated', {
+        MeetingID: S.meetingId, FileName: file.name, MimeType: file.type || 'application/pdf', Base64: b64
+      });
+      toast('تم رفع الملف ✅');
+      loadDocs();
+    } catch (e) { toast('خطأ: ' + e.message); }
+  };
+  r.readAsDataURL(file);
+}
+
+async function loadDocs() {
+  const docs = await API.call('listDecisionDocs', { MeetingID: S.meetingId });
+  const box = document.getElementById('docs');
+  if (!docs.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const cons = docs.filter(d => d.OwnerType === 'Meeting');
+  const per = docs.filter(d => d.OwnerType === 'Decision');
+  let html = '<h4>مستندات القرارات</h4>';
+  if (cons.length) html += '<div><strong>الملف المجمّع:</strong> ' +
+    cons.map(d => `<a href="${E(d.Url)}" target="_blank">${E(d.FileName || 'قرارات الجلسة')}</a>`).join('') + '</div>';
+  if (per.length) html += '<div style="margin-top:6px"><strong>قرارات المذكرات:</strong> ' +
+    per.map(d => `<a href="${E(d.Url)}" target="_blank">${E(d.FileName || 'قرار')}</a>`).join('') + '</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+run(loadMeetings);
+</script>
+<div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:40px;border-top:1px solid #E2E5EA;">تصميم وتنفيذ أحمد أسامة حميده</div>
+</body>
+</html>

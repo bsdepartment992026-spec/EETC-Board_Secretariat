@@ -93,6 +93,7 @@
 
       <div class="toolbar">
         <span class="grow cnt" id="count"></span>
+        <button class="ghost small" id="linkBtn" style="display:none" onclick="linkMemos()">🔗 ربط بالمذكرات</button>
         <button class="ghost small" onclick="printResults()">🖨️ طباعة النتائج</button>
         <button class="accent small" onclick="exportExcel()">📥 تصدير Excel</button>
       </div>
@@ -131,6 +132,9 @@ renderTopNav('archive');
 if (!API.hasPermission('ViewDashboardSearch')) {
   alert('ليس لديك صلاحية الوصول لهذه الصفحة');
   window.location.href = 'index.html';
+}
+if (API.hasPermission('ManageMeetings')) {
+  document.getElementById('linkBtn').style.display = '';
 }
 
 const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [] };
@@ -256,6 +260,22 @@ async function printResults() {
     </body></html>`);
   w.document.close();
   setTimeout(() => { w.focus(); w.print(); }, 400);
+}
+
+/* ---------------- الربط بالمذكرات ---------------- */
+async function linkMemos() {
+  if (!confirm('سيتم ربط صفوف الأرشيف بالمذكرات بمطابقة (السنة + رقم الجلسة + رقم المذكرة). هل تريد المتابعة؟')) return;
+  const btn = document.getElementById('linkBtn');
+  btn.disabled = true;
+  try {
+    const res = await API.call('linkArchiveToMemos', {});
+    toast('تم ربط ' + res.linked + ' صف بمذكراتها ✅');
+    await doSearch(false);
+  } catch (e) {
+    toast('خطأ: ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 run(async () => { await loadFacets(); await doSearch(true); });
