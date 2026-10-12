@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>المتابعة — نظام دورة العمل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Markazi+Text:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#1B2A41; --ink-soft:#4B5768; --paper:#F3F4F6; --surface:#fff;
+          --accent:#A6802E; --accent-soft:#F3ECDC; --line:#E2E5EA; --success:#1F7A4D; --danger:#B23A3A; --danger-soft:#FBEAEA; }
+  * { box-sizing:border-box; }
+  body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
+  .wrap { max-width:1200px; margin:0 auto; padding:24px; }
+
+  h2 { font-family:'Markazi Text', serif; font-size:22px; margin:0 0 4px; }
+  .lead { font-size:12.5px; color:var(--ink-soft); margin:0 0 16px; }
+
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:16px; }
+
+  .toolbar { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid var(--line); align-items:center; flex-wrap:wrap; background:#FAFAF9; }
+  .toolbar .grow { flex:1; }
+  .toolbar select.field { padding:7px 9px; border:1px solid var(--line); border-radius:5px; font-family:inherit; font-size:12.5px; background:#fff; }
+  .toolbar label.chk { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); }
+  .toolbar label.chk input { width:15px; height:15px; accent-color:var(--danger); }
+
+  button { font-family:inherit; cursor:pointer; border:none; border-radius:5px; font-size:12.5px; font-weight:600; padding:8px 14px; }
+  button.primary { background:var(--ink); color:#fff; } button.primary:hover { background:#0F1A2C; }
+  button.accent { background:var(--accent); color:#fff; } button.accent:hover { background:#8C6C25; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } button.ghost:hover { background:var(--paper); }
+  button.danger { background:var(--danger); color:#fff; } button.danger:hover { background:#8F2E2E; }
+  button.small { padding:6px 11px; font-size:12px; }
+  button:disabled { opacity:.55; cursor:default; }
+
+  .table-scroll { overflow-x:auto; }
+  table.grid { width:100%; border-collapse:collapse; font-size:13px; min-width:960px; }
+  table.grid th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:9px 8px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; white-space:nowrap; z-index:1; }
+  table.grid td { padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.grid tr:last-child td { border-bottom:none; }
+  th.c, td.c { width:52px; text-align:center; white-space:nowrap; }
+  th.s, td.s { width:110px; text-align:center; white-space:nowrap; }
+  th.o, td.o { width:320px; }
+  td .subj { font-size:12.5px; line-height:1.6; word-wrap:break-word; }
+  td .decision-text { font-size:12px; color:var(--ink-soft); line-height:1.6; margin-top:3px; }
+  .muted { color:var(--ink-soft); }
+  .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
+
+  .chip { display:inline-flex; align-items:center; gap:5px; background:#fff; border:1px solid var(--line);
+          border-radius:20px; padding:4px 10px 4px 6px; font-size:11.5px; margin:2px; cursor:pointer; max-width:100%; }
+  .chip:hover { border-color:var(--accent); }
+  .chip .dot { width:7px; height:7px; border-radius:50%; background:#C8CCD4; flex:none; }
+  .chip.has .dot { background:var(--success); }
+  .chip.late { border-color:var(--danger); background:var(--danger-soft); }
+  .chip.late .dot { background:var(--danger); }
+  .chip.closed { opacity:.6; text-decoration:line-through; }
+  .chip .org { font-weight:600; }
+  .chip .st { color:var(--ink-soft); }
+
+  .badge-count { font-size:11px; font-weight:700; background:var(--danger); color:#fff; border-radius:20px;
+                 padding:1px 7px; margin-right:4px; }
+
+  /* الجرس */
+  .bell-wrap { position:relative; }
+  .bell-btn { background:rgba(255,255,255,.08); border:none; color:#fff; width:38px; height:38px; border-radius:50%;
+              cursor:pointer; font-size:17px; display:flex; align-items:center; justify-content:center; position:relative; }
+  .bell-btn:hover { background:rgba(255,255,255,.18); }
+  .bell-btn .dot { position:absolute; top:4px; left:4px; min-width:16px; height:16px; border-radius:20px; background:var(--danger);
+                    color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; padding:0 4px; }
+  .bell-panel { position:absolute; top:46px; left:0; width:340px; max-width:88vw; background:#fff; border:1px solid var(--line);
+                border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.18); display:none; z-index:50; overflow:hidden; }
+  .bell-panel.show { display:block; }
+  .bell-panel .head { padding:10px 14px; border-bottom:1px solid var(--line); font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+  .bell-panel .head .cnt { font-size:11.5px; font-weight:400; color:var(--ink-soft); }
+  .bell-list { max-height:360px; overflow:auto; }
+  .bell-item { padding:9px 14px; border-bottom:1px solid #F1F2F4; font-size:12px; line-height:1.7; }
+  .bell-item:last-child { border-bottom:none; }
+  .bell-item .top { display:flex; justify-content:space-between; gap:8px; color:var(--ink-soft); font-size:11px; }
+  .bell-item .subj { color:var(--ink); font-weight:600; }
+  .bell-item .note { color:var(--ink-soft); }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:40; max-width:90%; text-align:center; }
+
+  /* Modal */
+  .backdrop { position:fixed; inset:0; background:rgba(27,42,65,.45); display:none; align-items:center; justify-content:center; z-index:30; padding:16px; }
+  .backdrop.show { display:flex; }
+  .modal { background:#fff; border-radius:8px; width:100%; max-width:480px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+  .modal-head { padding:12px 14px; border-bottom:1px solid var(--line); }
+  .modal-head .t { font-weight:700; font-size:13.5px; }
+  .modal-head .s { color:var(--ink-soft); font-weight:400; font-size:12px; margin-top:2px; }
+  .modal-body { padding:12px 14px; overflow:auto; }
+  .modal-body label { display:block; font-size:12px; color:var(--ink-soft); font-weight:600; margin:10px 0 5px; }
+  .modal-body label:first-child { margin-top:0; }
+  .modal-body select, .modal-body textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:5px;
+     font-family:inherit; font-size:13px; background:#fff; }
+  .modal-body textarea { min-height:60px; resize:vertical; }
+  .modal-body select:focus, .modal-body textarea:focus { outline:none; border-color:var(--accent); }
+  .decision-box { background:var(--paper); border:1px solid var(--line); border-radius:5px; padding:9px 11px; font-size:12.5px; line-height:1.7; }
+  .timeline { margin-top:8px; }
+  .timeline h4 { margin:14px 0 8px; font-size:12.5px; color:var(--ink-soft); }
+  .tl-item { border-right:2px solid var(--line); padding:4px 0 10px 0; padding-right:10px; margin-right:4px; position:relative; }
+  .tl-item::before { content:''; position:absolute; right:-5px; top:6px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .tl-item .st { font-weight:700; font-size:12.5px; }
+  .tl-item .note { font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .tl-item .meta { font-size:11px; color:#9AA3AF; margin-top:3px; }
+  .modal-foot { padding:10px 14px; border-top:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; background:#FAFAF9; }
+
+  @media (max-width:700px) {
+    .wrap { padding:16px 12px; }
+    h2 { font-size:19px; }
+    .toolbar { padding:10px; gap:6px; }
+    .toolbar select.field { width:100%; }
+    .toolbar button { flex:1; }
+    .toolbar .grow { display:none; }
+    th.o, td.o { width:auto; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">🔄 المتابعة</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="bell-wrap">
+        <button class="bell-btn" id="bellBtn" onclick="toggleBell()" title="آخر التحديثات">
+          🔔
+          <span class="dot" id="bellDot" style="display:none">0</span>
+        </button>
+        <div class="bell-panel" id="bellPanel">
+          <div class="head">آخر تحديثات المتابعة <span class="cnt" id="bellCnt"></span></div>
+          <div class="bell-list" id="bellList"><div class="empty">جارٍ التحميل...</div></div>
+        </div>
+      </div>
+      <div class="top-nav"></div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h2>متابعة تنفيذ القرارات</h2>
+    <p class="lead">كل قرار معتمد له جهة تنفيذ واحدة أو أكثر. اضغط على اسم الجهة لتحديث حالتها أو مراجعة سجل متابعتها.</p>
+
+    <div class="panel">
+      <div class="toolbar">
+        <select class="field" id="fMeeting" onchange="applyFilters()"><option value="">كل الجلسات</option></select>
+        <select class="field" id="fOrg" onchange="applyFilters()"><option value="">كل الجهات</option></select>
+        <select class="field" id="fStatus" onchange="applyFilters()"><option value="">كل الحالات</option></select>
+        <label class="chk"><input type="checkbox" id="fLate" onchange="applyFilters()"> متأخر فقط <span class="badge-count" id="lateBadge" style="display:none">0</span></label>
+        <span class="grow"></span>
+        <button class="ghost small" onclick="loadBoard()">🔄 تحديث</button>
+      </div>
+
+      <div class="table-scroll">
+        <table class="grid">
+          <thead><tr>
+            <th class="c">رقم القرار</th>
+            <th>الموضوع والقرار</th>
+            <th class="c">الجلسة</th>
+            <th class="o">الجهات المسؤولة وحالة كل جهة</th>
+          </tr></thead>
+          <tbody id="rows"><tr><td colspan="4" class="empty">جارٍ التحميل...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="backdrop" id="detailModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="t" id="mdOrg"></div>
+        <div class="s" id="mdSubject"></div>
+      </div>
+      <div class="modal-body">
+        <label>نص القرار</label>
+        <div class="decision-box" id="mdDecisionText"></div>
+
+        <label>الحالة</label>
+        <select id="mdStatus"></select>
+
+        <label>ملاحظة</label>
+        <textarea id="mdNote" placeholder="اكتب تفاصيل التحديث..."></textarea>
+
+        <div class="timeline">
+          <h4>سجل المتابعة</h4>
+          <div id="mdTimeline"><div class="empty">لا توجد تحديثات بعد.</div></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost small" id="mdCloseToggle" onclick="toggleCloseFollowUp()"></button>
+        <div style="display:flex; gap:8px;">
+          <button class="ghost small" onclick="closeModal()">إغلاق</button>
+          <button class="accent small" onclick="saveFollowUpUpdate()">💾 حفظ التحديث</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="js/api.js"></script>
+<script src="js/nav.js"></script>
+<script>
+API.requireLogin();
+renderTopNav('followups');
+if (!API.hasPermission('ManageFollowUps')) {
+  alert('ليس لديك صلاحية الوصول لهذه الصفحة');
+  window.location.href = 'index.html';
+}
+
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 2400);
+}
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
+  return m ? `${+m[3]}/${+m[2]}/${+m[1]}` : '';
+}
+function fmtDateTime(s) {
+  if (!s) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(s));
+  if (!m) return s;
+  let out = `${+m[3]}/${+m[2]}/${+m[1]}`;
+  if (m[4]) out += ` — ${m[4]}:${m[5]}`;
+  return out;
+}
+
+let board = null;
+let currentFollowUpId = null;
+
+async function loadBoard() {
+  document.getElementById('rows').innerHTML = '<tr><td colspan="4" class="empty">جارٍ التحميل...</td></tr>';
+  const filters = {
+    MeetingID: document.getElementById('fMeeting').value,
+    OrgID: document.getElementById('fOrg').value,
+    StatusID: document.getElementById('fStatus').value,
+    LateOnly: document.getElementById('fLate').checked
+  };
+  try {
+    board = await API.call('getFollowUpsBoard', filters);
+    fillFilterOptions();
+    renderRows();
+    updateLateBadge(board.lateCount);
+  } catch (e) {
+    document.getElementById('rows').innerHTML = `<tr><td colspan="4" class="empty" style="color:#B23A3A">تعذّر تحميل المتابعة: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function fillFilterOptions() {
+  const mSel = document.getElementById('fMeeting');
+  const curM = mSel.value;
+  if (!mSel.dataset.filled) {
+    mSel.innerHTML = '<option value="">كل الجلسات</option>' + board.meetings.map(m =>
+      `<option value="${m.MeetingID}">الجلسة ${esc(m.SessionNumber ?? '')} — ${fmtDate(m.SessionDate)}</option>`).join('');
+    mSel.value = curM;
+    mSel.dataset.filled = '1';
+  }
+  const oSel = document.getElementById('fOrg');
+  if (!oSel.dataset.filled) {
+    oSel.innerHTML = '<option value="">كل الجهات</option>' + board.orgs.map(o => `<option value="${o.OrgID}">${esc(o.Name)}</option>`).join('');
+    oSel.dataset.filled = '1';
+  }
+  const sSel = document.getElementById('fStatus');
+  if (!sSel.dataset.filled) {
+    sSel.innerHTML = '<option value="">كل الحالات</option>' + board.statuses.map(s => `<option value="${s.ItemID}">${esc(s.Label)}</option>`).join('');
+    sSel.dataset.filled = '1';
+  }
+}
+
+function applyFilters() { loadBoard(); }
+
+function updateLateBadge(n) {
+  const b = document.getElementById('lateBadge');
+  if (n > 0) { b.style.display = 'inline-block'; b.textContent = n; }
+  else { b.style.display = 'none'; }
+}
+
+function renderRows() {
+  const box = document.getElementById('rows');
+  if (!board.decisions.length) {
+    box.innerHTML = '<tr><td colspan="4" class="empty">لا توجد قرارات تطابق الفلاتر الحالية.</td></tr>';
+    return;
+  }
+  box.innerHTML = board.decisions.map(d => `
+    <tr>
+      <td class="c">${esc(d.DecisionNumber ?? '')}</td>
+      <td>
+        <div class="subj">${esc(d.Subject)}</div>
+        <div class="decision-text">${esc(d.DecisionText)}</div>
+      </td>
+      <td class="c">${esc(d.SessionNumber ?? '')}<div class="decision-text">${fmtDate(d.SessionDate)}</div></td>
+      <td class="o">${d.Orgs.map(orgChip).join('')}</td>
+    </tr>`).join('');
+}
+
+function orgChip(o) {
+  const cls = ['chip'];
+  if (o.StatusID) cls.push('has');
+  if (o.IsLate) cls.push('late');
+  if (o.IsClosed) cls.push('closed');
+  const st = o.IsClosed ? 'مُقفلة' : (o.StatusLabel || 'بدون تحديث');
+  return `<span class="${cls.join(' ')}" onclick="openDetail('${o.FollowUpID}')">
+    <span class="dot"></span><span class="org">${esc(o.OrgName)}</span><span class="st"> — ${esc(st)}</span>
+  </span>`;
+}
+
+async function openDetail(followUpId) {
+  currentFollowUpId = followUpId;
+  const modal = document.getElementById('detailModal');
+  modal.classList.add('show');
+  document.getElementById('mdTimeline').innerHTML = '<div class="empty">جارٍ التحميل...</div>';
+  try {
+    const d = await API.call('getFollowUpDetail', { FollowUpID: followUpId });
+    document.getElementById('mdOrg').textContent = d.OrgName;
+    document.getElementById('mdSubject').textContent = `القرار رقم ${d.DecisionNumber ?? ''} — الجلسة ${d.SessionNumber ?? ''} (${fmtDate(d.SessionDate)})`;
+    document.getElementById('mdDecisionText').textContent = d.DecisionText || d.Subject || '—';
+
+    const stSel = document.getElementById('mdStatus');
+    stSel.innerHTML = '<option value="">بدون تحديث</option>' + board.statuses.map(s =>
+      `<option value="${s.ItemID}" ${s.ItemID === d.StatusID ? 'selected' : ''}>${esc(s.Label)}</option>`).join('');
+    document.getElementById('mdNote').value = '';
+
+    const closeBtn = document.getElementById('mdCloseToggle');
+    closeBtn.textContent = d.IsClosed ? '↩️ إعادة فتح المتابعة' : '🔒 إغلاق المتابعة يدويًا';
+    closeBtn.dataset.closed = d.IsClosed ? '1' : '0';
+
+    document.getElementById('mdTimeline').innerHTML = d.Logs.length
+      ? d.Logs.map(l => `
+        <div class="tl-item">
+          <div class="st">${esc(l.StatusLabel || 'تحديث بدون حالة')}</div>
+          ${l.Note ? `<div class="note">${esc(l.Note)}</div>` : ''}
+          <div class="meta">${fmtDateTime(l.CreatedAt)}</div>
+        </div>`).join('')
+      : '<div class="empty">لا توجد تحديثات بعد.</div>';
+  } catch (e) {
+    toast('خطأ: ' + e.message);
+    closeModal();
+  }
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('show');
+  currentFollowUpId = null;
+}
+
+async function saveFollowUpUpdate() {
+  if (!currentFollowUpId) return;
+  const StatusID = document.getElementById('mdStatus').value;
+  const Note = document.getElementById('mdNote').value.trim();
+  try {
+    await API.call('updateFollowUpStatus', { FollowUpID: currentFollowUpId, StatusID, Note });
+    toast('تم حفظ التحديث');
+    await openDetail(currentFollowUpId);
+    await loadBoard();
+    loadBell();
+  } catch (e) { toast('خطأ: ' + e.message); }
+}
+
+async function toggleCloseFollowUp() {
+  if (!currentFollowUpId) return;
+  const btn = document.getElementById('mdCloseToggle');
+  const willClose = btn.dataset.closed !== '1';
+  if (willClose && !confirm('إغلاق المتابعة لهذه الجهة؟ يمكن إعادة فتحها لاحقًا.')) return;
+  try {
+    await API.call('setFollowUpClosed', { FollowUpID: currentFollowUpId, IsClosed: willClose });
+    toast(willClose ? 'تم إغلاق المتابعة' : 'تم إعادة فتح المتابعة');
+    await openDetail(currentFollowUpId);
+    await loadBoard();
+  } catch (e) { toast('خطأ: ' + e.message); }
+}
+
+/* ---------------- جرس الإشعارات ---------------- */
+let bellOpen = false;
+function toggleBell() {
+  bellOpen = !bellOpen;
+  document.getElementById('bellPanel').classList.toggle('show', bellOpen);
+  if (bellOpen) loadBell();
+}
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.bell-wrap');
+  if (bellOpen && wrap && !wrap.contains(e.target)) {
+    bellOpen = false;
+    document.getElementById('bellPanel').classList.remove('show');
+  }
+});
+
+async function loadBell() {
+  try {
+    const r = await API.call('getRecentFollowUpActivity', { limit: 15 });
+    const dot = document.getElementById('bellDot');
+    if (r.lateCount > 0) { dot.style.display = 'flex'; dot.textContent = r.lateCount > 99 ? '99+' : r.lateCount; }
+    else { dot.style.display = 'none'; }
+    document.getElementById('bellCnt').textContent = r.logs.length ? `${r.logs.length} تحديث` : '';
+    document.getElementById('bellList').innerHTML = r.logs.length
+      ? r.logs.map(l => `
+        <div class="bell-item">
+          <div class="top"><span>${esc(l.OrgName)}${l.SessionNumber !== '' ? ' · الجلسة ' + esc(l.SessionNumber) : ''}</span><span>${fmtDateTime(l.CreatedAt)}</span></div>
+          <div class="subj">${esc(l.Subject)}</div>
+          <div>الحالة: ${esc(l.StatusLabel || 'بدون حالة')}</div>
+          ${l.Note ? `<div class="note">${esc(l.Note)}</div>` : ''}
+        </div>`).join('')
+      : '<div class="empty">لا توجد تحديثات بعد.</div>';
+  } catch (e) {
+    document.getElementById('bellList').innerHTML = `<div class="empty" style="color:#B23A3A">تعذّر التحميل: ${esc(e.message)}</div>`;
+  }
+}
+
+loadBoard();
+loadBell();
+</script>
+<div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:40px;border-top:1px solid #E2E5EA;">تصميم وتنفيذ أحمد أسامة حميده</div>
+</body>
+</html>
