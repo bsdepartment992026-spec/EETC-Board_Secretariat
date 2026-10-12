@@ -229,13 +229,13 @@ async function exportExcel() {
 async function printResults() {
   const res = await API.call('searchArchive', Object.assign(filters(), { page: 1, pageSize: 500 }));
   const rows = res.items.map(r => `<tr>
-      <td class="c">${E(r.Year)}</td>
-      <td class="c">${E(r.SessionNumber) || '—'}</td>
-      <td class="d">${E(AR.formatDate(r.SessionDate))}</td>
-      <td class="n">${E(r.MemoNumber)}</td>
-      <td>${E(r.Subject)}</td>
-      <td class="e">${E(r.PresentingEntity) || '—'}</td>
-      <td class="p">${E(r.DecisionPath) || '—'}</td>
+      <td class="c">${E(AR.digits(r.Year))}</td>
+      <td class="c">${E(AR.digits(r.SessionNumber)) || '—'}</td>
+      <td class="d">${E(AR.digits(AR.formatDate(r.SessionDate)))}</td>
+      <td class="n">${E(AR.digits(r.MemoNumber))}</td>
+      <td>${E(AR.digits(r.Subject))}</td>
+      <td class="e">${E(AR.digits(r.PresentingEntity)) || '—'}</td>
+      <td class="p">${E(AR.digits(r.DecisionPath)) || '—'}</td>
     </tr>`).join('');
 
   const w = window.open('', '_blank');
@@ -252,7 +252,7 @@ async function printResults() {
       @media print{ @page{ size:A4 landscape; margin:10mm; } }
     </style></head><body>
     <h2>أرشيف قرارات الجلسات</h2>
-    <div class="meta">عدد النتائج: ${res.total} — بتاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</div>
+    <div class="meta">عدد النتائج: ${AR.digits(res.total)} — بتاريخ الطباعة: ${AR.digits(new Date().toLocaleDateString('ar-EG'))}</div>
     <table><thead><tr>
       <th>السنة</th><th>الجلسة</th><th>التاريخ</th><th>رقم المذكرة</th>
       <th>الموضوع</th><th>جهة العرض</th><th>مسار القرار</th>

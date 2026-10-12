@@ -33,16 +33,17 @@
   button:disabled { opacity:.55; cursor:default; }
 
   .table-scroll { overflow-x:auto; }
-  table.grid { width:100%; border-collapse:collapse; font-size:13px; min-width:920px; }
-  table.grid th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:9px 8px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; white-space:nowrap; z-index:1; }
+  table.grid { width:100%; border-collapse:collapse; font-size:13px; min-width:900px; table-layout:fixed; }
+  table.grid th { text-align:right; font-size:11.5px; color:var(--ink-soft); font-weight:600; padding:9px 8px; border-bottom:1px solid var(--line); background:#fff; position:sticky; top:0; z-index:1; }
   table.grid td { padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
   table.grid tr:last-child td { border-bottom:none; }
-  th.c, td.c { width:60px; text-align:center; white-space:nowrap; }
-  th.e, td.e { width:170px; }
-  th.n, td.n { width:210px; }
-  td .subj { font-size:12.5px; line-height:1.6; word-wrap:break-word; }
+  th.c, td.c { width:58px; text-align:center; white-space:nowrap; }
+  th.sub, td.sub { width:230px; }
+  th.e, td.e { width:165px; }
+  th.n, td.n { width:190px; }
+  td.sub .subj { font-size:12.5px; line-height:1.6; max-height:120px; overflow-y:auto; padding-inline-end:4px; }
   td.muted { color:var(--ink-soft); }
-  td textarea { width:100%; min-height:64px; resize:vertical; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:inherit; font-size:12.5px; line-height:1.6; color:var(--ink); }
+  td textarea { width:100%; height:92px; resize:vertical; overflow-y:auto; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:'Times New Roman', serif; font-size:14px; line-height:1.5; color:var(--ink); }
   td textarea:focus, td input:focus, .toolbar select.field:focus { outline:none; border-color:var(--accent); }
   td input.note { width:100%; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:inherit; font-size:12.5px; }
   .exec-btn { width:100%; text-align:right; background:#fff; border:1px dashed var(--line); color:var(--ink-soft); font-weight:500; padding:7px 9px; border-radius:5px; font-size:12px; white-space:normal; }
@@ -82,7 +83,6 @@
 
   <div class="wrap">
     <h2>قرارات الجلسة</h2>
-    <p class="lead">قرار لكل بند من بنود جدول الأعمال. رقم القرار = رقم المذكرة في الرول. "جهة التنفيذ" تُختار من الإعدادات.</p>
 
     <div class="panel">
       <div class="toolbar">
@@ -101,7 +101,7 @@
         <table class="grid">
           <thead><tr>
             <th class="c">رقم المذكرة</th>
-            <th>الموضوع</th>
+            <th class="sub">الموضوع</th>
             <th>القرار</th>
             <th class="e">جهة التنفيذ</th>
             <th class="n">ملاحظات</th>
@@ -140,6 +140,8 @@ if (!API.hasPermission('ManageDecisions')) {
 
 const S = { meetings: [], meetingId: '', meeting: null, items: [], orgs: [], phrases: [], execMap: {}, approved: false };
 const E = AR.esc;
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function toAr(v) { return String(v == null ? '' : v).replace(/[0-9]/g, d => AR_DIGITS[+d]); }
 let execTarget = null;
 
 function toast(msg) {
@@ -156,8 +158,8 @@ function subjectOf(it) {
 }
 
 function meetingLabel(m) {
-  const d = AR.formatDate(m.SessionDate);
-  if (m.SessionNumber != null) return 'الجلسة ' + m.SessionNumber + ' — ' + d;
+  const d = toAr(AR.formatDate(m.SessionDate));
+  if (m.SessionNumber != null) return 'الجلسة ' + toAr(m.SessionNumber) + ' — ' + d;
   return 'جلسة ' + d;
 }
 
@@ -221,8 +223,8 @@ function render() {
     const id = it.RollItemID;
     const num = (it.RollNumber === null || it.RollNumber === undefined) ? '—' : it.RollNumber;
     return `<tr data-roll="${E(id)}">
-      <td class="c">${E(num)}</td>
-      <td><div class="subj">${E(it._subject)}</div></td>
+      <td class="c">${E(toAr(num))}</td>
+      <td class="sub"><div class="subj">${E(it._subject)}</div></td>
       <td><textarea id="dec-${E(id)}" placeholder="اكتب نص القرار...">${E(it.DecisionText)}</textarea></td>
       <td class="e"><button type="button" class="exec-btn" id="execbtn-${E(id)}" onclick="openExec('${E(id)}')"></button></td>
       <td class="n"><input class="note" id="note-${E(id)}" value="${E(it.ExecNote)}" placeholder="ملاحظات"></td>
@@ -308,51 +310,57 @@ function insertPhrase() {
 function printDecisions() {
   const items = collectItems();
   const rows = items.map(r => `<tr>
-      <td class="n">${r.DecisionNumber === null || r.DecisionNumber === undefined ? '' : E(String(r.DecisionNumber))}</td>
-      <td>${E(r.Subject)}</td>
-      <td class="d">${E(String(r.DecisionText || '')).replace(/\n/g, '<br>')}</td>
+      <td class="num">${r.DecisionNumber === null || r.DecisionNumber === undefined ? '' : E(toAr(String(r.DecisionNumber)))}</td>
+      <td class="subj">${E(AR.digits(r.Subject))}</td>
+      <td class="dec">${E(AR.digits(String(r.DecisionText || '')))}</td>
     </tr>`).join('');
   const words = AR.ordinal(S.meeting.SessionNumber);
-  const year = AR.year(S.meeting.SessionDate);
-  const date = AR.formatDate(S.meeting.SessionDate);
+  const year = toAr(AR.year(S.meeting.SessionDate));
+  const date = toAr(AR.formatDate(S.meeting.SessionDate));
 
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
   <title>قرارات الجلسة</title>
   <style>
-    body{font-family:'Cairo','Arial',sans-serif;color:#111;margin:0;padding:14mm 12mm;}
-    table{width:100%;border-collapse:collapse;font-size:12.5px;}
+    body{font-family:'Times New Roman',serif;color:#000;margin:0;padding:12mm;}
+    table{width:100%;border-collapse:collapse;}
     thead{display:table-header-group;}
     tr{page-break-inside:avoid;}
-    th,td{border:1px solid #333;padding:6px 8px;vertical-align:top;text-align:right;}
-    tr.hd th{border:none;padding:0 0 8px;text-align:center;}
-    .org{font-size:15px;font-weight:700;}
-    .org2{font-size:14px;font-weight:700;}
-    .hr{font-size:12px;letter-spacing:1px;}
-    .ttl{font-size:19px;font-weight:700;margin-top:4px;}
-    .sub{font-size:13px;}
-    th.col{background:#EFEFEF;font-size:12px;text-align:center;}
-    th.n,td.n{width:70px;text-align:center;white-space:nowrap;}
-    .wm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:0;pointer-events:none;}
-    .wm span{font-size:78px;font-weight:700;font-style:italic;color:rgba(27,42,65,.07);transform:rotate(-45deg);white-space:nowrap;}
+    th,td{border:none;padding:6px 8px;vertical-align:top;text-align:right;}
+    .hd .right{text-align:right;font-size:14pt;font-weight:700;line-height:1.45;}
+    .hd .c{text-align:center;font-size:14pt;line-height:1.45;}
+    .hd .ttl{text-align:center;font-size:14pt;font-weight:700;}
+    .colhead th{text-align:center;font-size:14pt;font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;}
+    td.num{font-size:12pt;text-align:center;white-space:nowrap;}
+    td.subj{font-size:12pt;width:29%;}
+    td.dec{font-size:13pt;white-space:pre-wrap;word-wrap:break-word;}
+    .sig{width:100%;margin-top:24mm;}
+    .sig td{width:50%;text-align:center;font-size:14pt;font-weight:700;padding-top:8px;border:none;}
+    .wm{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;}
+    .wm span{font-family:'Times New Roman',serif;font-style:italic;font-weight:700;font-size:82pt;color:rgba(110,110,110,.20);transform:rotate(-45deg);white-space:nowrap;}
     @media print{ @page{ size:A4 portrait; margin:12mm; } }
   </style></head><body>
   <div class="wm"><span>قرارات مجلس الإدارة</span></div>
   <table>
+    <colgroup><col style="width:9%"><col style="width:29%"><col style="width:62%"></colgroup>
     <thead>
       <tr class="hd"><th colspan="3">
-        <div class="org">الشركة المصرية لنقل الكهرباء</div>
-        <div class="org2">مجلس الإدارة</div>
-        <div class="hr">ــــــــــــــــــــ</div>
+        <div class="right">الشركة المصرية لنقل الكهرباء</div>
+        <div class="right">مجلس الإدارة</div>
+        <div class="c">ــــــــــــــــــــ</div>
         <div class="ttl">" القرارات "</div>
-        <div class="sub">الصادرة في المسائل التي تضمنها جدول أعمال</div>
-        <div class="sub">الجلسة ${E(words)} لسنة ${E(year)}</div>
-        <div class="sub">المنعقدة بتاريخ ${E(date)}</div>
+        <div class="c">الصادرة في المسائل التي تضمنها جدول أعمال</div>
+        <div class="c">الجلسة ${E(words)} لسنة ${E(year)}</div>
+        <div class="c">المنعقدة بتاريخ ${E(date)}</div>
       </th></tr>
-      <tr><th class="col n">رقم المذكرة</th><th class="col">الموضوع</th><th class="col">القرار</th></tr>
+      <tr class="colhead"><th>رقم المذكرة</th><th>الموضوع</th><th>القرار</th></tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>
+  <table class="sig"><tr>
+    <td>أمين سر المجلس</td>
+    <td>رئيس مجلس الإدارة</td>
+  </tr></table>
   </body></html>`);
   w.document.close();
   setTimeout(() => { w.focus(); w.print(); }, 500);
