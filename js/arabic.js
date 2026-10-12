@@ -104,20 +104,32 @@ const AR = (function () {
     })(root);
   }
 
-  /** يفعّل التحويل التلقائي لكل ما يُعرض لاحقًا (عبر MutationObserver). */
+  /** يفعّل التحويل التلقائي للعناصر المُضافة لاحقًا (childList فقط، مُجمّعة كل إطار). */
   function watch() {
     if (typeof document === 'undefined' || window.__arDigitsWatch) return;
     window.__arDigitsWatch = true;
+    const queue = [];
+    let scheduled = false;
+    function flush() {
+      scheduled = false;
+      const nodes = queue.splice(0, queue.length);
+      for (let i = 0; i < nodes.length; i++) {
+        try { arabize(nodes[i]); } catch (e) { /* تجاهل */ }
+      }
+    }
     try {
       const obs = new MutationObserver(function (muts) {
         for (let i = 0; i < muts.length; i++) {
-          const m = muts[i];
-          if (m.type === 'childList') {
-            for (let j = 0; j < m.addedNodes.length; j++) arabize(m.addedNodes[j]);
-          } else arabize(m.target);
+          const added = muts[i].addedNodes;
+          for (let j = 0; j < added.length; j++) queue.push(added[j]);
+        }
+        if (!scheduled && queue.length) {
+          scheduled = true;
+          if (window.requestAnimationFrame) window.requestAnimationFrame(flush);
+          else setTimeout(flush, 16);
         }
       });
-      obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      obs.observe(document.body, { childList: true, subtree: true });
     } catch (e) { /* تجاهل */ }
     arabize(document.body);
   }
