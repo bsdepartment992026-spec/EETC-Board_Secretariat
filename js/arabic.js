@@ -32,11 +32,11 @@ const AR = (function () {
   }
   function formatDate(dateStr) {
     const p = parts(dateStr);
-    return p ? p.d + '/' + p.m + '/' + p.y : BLANK;
+    return p ? digits(p.y + '/' + p.m + '/' + p.d) : BLANK;
   }
   function year(dateStr) {
     const p = parts(dateStr);
-    return p ? String(p.y) : BLANK;
+    return p ? digits(String(p.y)) : BLANK;
   }
   function dayName(dateStr) {
     const p = parts(dateStr);
