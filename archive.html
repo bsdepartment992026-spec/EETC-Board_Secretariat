@@ -244,7 +244,31 @@ function base64ToFile(f) {
   const bin = atob(f.Base64 || '');
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new File([bytes], f.FileName || 'قرار.pdf', { type: f.MimeType || 'application/pdf' });
+  return new File([bytes], shareName(f.FileName), { type: f.MimeType || 'application/pdf' });
+}
+/* اسم ملف آمن للإرسال (واجهة المشاركة في أندرويد تفسّر الاسم العربي كـ Latin-1 فيظهر مشوّها). */
+const AR2LAT = { 'ا':'a','أ':'a','إ':'a','آ':'a','ٱ':'a','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh','د':'d','ذ':'th','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'th','ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w','ي':'y','ى':'a','ة':'a','ء':'' ,'ؤ':'w','ئ':'y' };
+function fixMojibake(s) {
+  if (!s) return s;
+  if ([...String(s)].some(c => c.codePointAt(0) > 0xFF)) return s;
+  if (!/[\u00C2-\u00F4]/.test(s)) return s;
+  try {
+    const bytes = Uint8Array.from([...s], c => c.charCodeAt(0) & 0xFF);
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) { return s; }
+}
+function shareName(rawName) {
+  const n = fixMojibake(rawName || '');
+  const dot = n.lastIndexOf('.');
+  let base = dot > 0 ? n.slice(0, dot) : n;
+  const ext = dot > 0 ? n.slice(dot) : '.pdf';
+  base = base.replace(/قرارات الجلسة/g, 'Session Decisions')
+             .replace(/قرار مذكرة/g, 'Decision')
+             .replace(/لسنة/g, 'of');
+  base = [...base].map(ch => ch.codePointAt(0) <= 0x7F ? ch : (AR2LAT[ch] !== undefined ? AR2LAT[ch] : ' ')).join('');
+  base = base.replace(/\s+/g, ' ').trim();
+  if (!base) base = 'Decision';
+  return base + (/^\.[A-Za-z0-9]+$/.test(ext) ? ext : '.pdf');
 }
 async function prefetchFile(docId) {
   if (!docId) return null;
