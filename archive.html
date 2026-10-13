@@ -48,6 +48,9 @@
   th.n, td.n { width:64px; text-align:center; white-space:nowrap; }
   th.e, td.e { width:150px; }
   th.p, td.p { width:150px; }
+  th.k, td.k { width:34px; text-align:center; }
+  th.st, td.st { width:110px; text-align:center; white-space:nowrap; }
+  input.rowchk { width:16px; height:16px; accent-color:var(--accent); }
   tr:hover td { background:#FBFBF9; }
   .subj { font-size:13px; line-height:1.65; word-wrap:break-word; }
   .muted { color:var(--ink-soft); }
@@ -93,6 +96,7 @@
 
       <div class="toolbar">
         <span class="grow cnt" id="count"></span>
+        <button class="accent small" id="sendBtn" onclick="sendWhatsApp()" disabled>📤 إرسال واتساب</button>
         <button class="ghost small" id="linkBtn" style="display:none" onclick="linkMemos()">🔗 ربط بالمذكرات</button>
         <button class="ghost small" onclick="printResults()">🖨️ طباعة النتائج</button>
         <button class="accent small" onclick="exportExcel()">📥 تصدير Excel</button>
@@ -101,6 +105,7 @@
       <div class="table-scroll">
         <table>
           <thead><tr>
+            <th class="k"><input type="checkbox" class="rowchk" id="chkAll" title="تحديد الكل" onclick="toggleAll(this)"></th>
             <th class="c">السنة</th>
             <th class="c">الجلسة</th>
             <th class="d">التاريخ</th>
@@ -108,8 +113,9 @@
             <th>الموضوع</th>
             <th class="e">جهة العرض</th>
             <th class="p">مسار القرار</th>
+            <th class="st">حالة القرار</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="7" class="empty">جارٍ التحميل...</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="9" class="empty">جارٍ التحميل...</td></tr></tbody>
         </table>
       </div>
 
@@ -137,7 +143,7 @@ if (API.hasPermission('ManageMeetings')) {
   document.getElementById('linkBtn').style.display = '';
 }
 
-const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [] };
+const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [], fileCache: {} };
 const E = AR.esc;
 
 function toast(msg) {
@@ -191,12 +197,16 @@ function render() {
     S.total ? `إجمالي النتائج: ${S.total} قرار` : '';
 
   if (!S.items.length) {
-    box.innerHTML = '<tr><td colspan="7" class="empty">لا توجد نتائج مطابقة. جرّب تعديل معايير البحث.</td></tr>';
+    box.innerHTML = '<tr><td colspan="9" class="empty">لا توجد نتائج مطابقة. جرّب تعديل معايير البحث.</td></tr>';
   } else {
     box.innerHTML = S.items.map(r => {
       const date = AR.formatDate(r.SessionDate);
       const note = r.Notes ? ` title="${E(String(r.Notes))}"` : '';
+      const chk = r.HasFile
+        ? `<input type="checkbox" class="rowchk" value="${E(r.DocID)}" onchange="onRowCheck(this)">`
+        : `<span class="muted" title="لا يوجد ملف قرار">—</span>`;
       return `<tr${note}>
+        <td class="k">${chk}</td>
         <td class="c">${E(r.Year)}</td>
         <td class="c">${E(r.SessionNumber) || '<span class="muted">—</span>'}</td>
         <td class="d">${E(date)}</td>
@@ -204,14 +214,83 @@ function render() {
         <td><div class="subj">${E(r.Subject)}</div></td>
         <td class="e">${E(r.PresentingEntity) || '<span class="muted">—</span>'}</td>
         <td class="p">${E(r.DecisionPath) || '<span class="muted">—</span>'}</td>
+        <td class="st">${E(r.StatusLabel) || '<span class="muted">—</span>'}</td>
       </tr>`;
     }).join('');
   }
+  const all = document.getElementById('chkAll');
+  if (all) all.checked = false;
+  onRowCheck();
 
   document.getElementById('pageInfo').textContent =
     (S.total ? `صفحة ${S.page} من ${S.pageCount}` : '');
   document.getElementById('prevBtn').disabled = S.page <= 1;
   document.getElementById('nextBtn').disabled = S.page >= S.pageCount;
+}
+
+/* ---------------- تحديد وإرسال القرارات عبر واتساب ---------------- */
+function toggleAll(cb) {
+  document.querySelectorAll('#rows .rowchk').forEach(c => { c.checked = cb.checked; });
+  onRowCheck();
+}
+function selectedDocIds() {
+  return Array.from(document.querySelectorAll('#rows .rowchk:checked')).map(c => c.value);
+}
+function onRowCheck(el) {
+  if (el && el.checked) prefetchFile(el.value);
+  document.getElementById('sendBtn').disabled = selectedDocIds().length === 0;
+}
+function base64ToFile(f) {
+  const bin = atob(f.Base64 || '');
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], f.FileName || 'قرار.pdf', { type: f.MimeType || 'application/pdf' });
+}
+async function prefetchFile(docId) {
+  if (!docId) return null;
+  const c = S.fileCache[docId];
+  if (c && c !== 'loading') return c;
+  if (c === 'loading') return null;
+  S.fileCache[docId] = 'loading';
+  try {
+    const f = await API.call('getArchiveFile', { DocID: docId });
+    const file = base64ToFile(f);
+    S.fileCache[docId] = file;
+    return file;
+  } catch (e) { S.fileCache[docId] = null; return null; }
+}
+async function sendWhatsApp() {
+  const ids = selectedDocIds();
+  if (!ids.length) return;
+  toast('جارٍ تجهيز الملف...');
+  const files = [];
+  for (const docId of ids) {
+    let f = S.fileCache[docId];
+    if (f === 'loading') {
+      for (let i = 0; i < 20 && f === 'loading'; i++) { await new Promise(r => setTimeout(r, 150)); f = S.fileCache[docId]; }
+    }
+    if (!f || f === 'loading') f = await prefetchFile(docId);
+    if (f && f !== 'loading') files.push(f);
+  }
+  if (!files.length) { toast('تعذّر تجهيز الملفات.'); return; }
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
+      await navigator.share({ files, title: 'قرار مجلس الإدارة', text: 'نسخة القرار (PDF)' });
+      toast('تم فتح خيارات المشاركة — اختر واتساب ✅');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      toast('تعذّر الإرسال: ' + e.message);
+    }
+  } else {
+    toast('متصفحك لا يدعم مشاركة الملفات — تم تنزيل الملف لإرفاقه يدويًا في واتساب.');
+    files.forEach(f => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(f);
+      a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    window.open('https://wa.me/', '_blank');
+  }
 }
 
 /* ---------------- التصدير ---------------- */
@@ -236,6 +315,7 @@ async function printResults() {
       <td>${E(AR.digits(r.Subject))}</td>
       <td class="e">${E(AR.digits(r.PresentingEntity)) || '—'}</td>
       <td class="p">${E(AR.digits(r.DecisionPath)) || '—'}</td>
+      <td class="c">${E(AR.digits(r.StatusLabel)) || '—'}</td>
     </tr>`).join('');
 
   const w = window.open('', '_blank');
@@ -252,10 +332,10 @@ async function printResults() {
       @media print{ @page{ size:A4 landscape; margin:10mm; } }
     </style></head><body>
     <h2>أرشيف قرارات الجلسات</h2>
-    <div class="meta">عدد النتائج: ${AR.digits(res.total)} — بتاريخ الطباعة: ${AR.digits(new Date().toLocaleDateString('ar-EG'))}</div>
+    <div class="meta">عدد النتائج: ${AR.digits(res.total)} — بتاريخ الطباعة: ${(() => { const t = new Date(); return AR.digits(t.getFullYear() + '/' + (t.getMonth() + 1) + '/' + t.getDate()); })()}</div>
     <table><thead><tr>
       <th>السنة</th><th>الجلسة</th><th>التاريخ</th><th>رقم المذكرة</th>
-      <th>الموضوع</th><th>جهة العرض</th><th>مسار القرار</th>
+      <th>الموضوع</th><th>جهة العرض</th><th>مسار القرار</th><th>حالة القرار</th>
     </tr></thead><tbody>${rows}</tbody></table>
     </body></html>`);
   w.document.close();

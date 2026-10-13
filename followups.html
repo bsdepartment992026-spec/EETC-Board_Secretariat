@@ -193,6 +193,7 @@
   </div>
 
 <script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
 <script src="js/nav.js"></script>
 <script>
 API.requireLogin();
@@ -216,16 +217,18 @@ function toast(msg) {
   t._timer = setTimeout(() => t.style.display = 'none', 2400);
 }
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const ARD = '٠١٢٣٤٥٦٧٨٩';
+function arDigits(v) { return String(v == null ? '' : v).replace(/[0-9]/g, d => ARD[+d]); }
 function fmtDate(s) {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || '');
-  return m ? `${+m[3]}/${+m[2]}/${+m[1]}` : '';
+  return m ? arDigits(`${+m[1]}/${+m[2]}/${+m[3]}`) : '';
 }
 function fmtDateTime(s) {
   if (!s) return '';
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(s));
   if (!m) return s;
-  let out = `${+m[3]}/${+m[2]}/${+m[1]}`;
-  if (m[4]) out += ` — ${m[4]}:${m[5]}`;
+  let out = arDigits(`${+m[1]}/${+m[2]}/${+m[3]}`);
+  if (m[4]) out += ` — ${arDigits(m[4])}:${arDigits(m[5])}`;
   return out;
 }
 
@@ -255,7 +258,7 @@ function fillFilterOptions() {
   const curM = mSel.value;
   if (!mSel.dataset.filled) {
     mSel.innerHTML = '<option value="">كل الجلسات</option>' + board.meetings.map(m =>
-      `<option value="${m.MeetingID}">الجلسة ${esc(m.SessionNumber ?? '')} — ${fmtDate(m.SessionDate)}</option>`).join('');
+      `<option value="${m.MeetingID}">الجلسة ${arDigits(m.SessionNumber ?? '')} — ${fmtDate(m.SessionDate)}</option>`).join('');
     mSel.value = curM;
     mSel.dataset.filled = '1';
   }
@@ -275,7 +278,7 @@ function applyFilters() { loadBoard(); }
 
 function updateLateBadge(n) {
   const b = document.getElementById('lateBadge');
-  if (n > 0) { b.style.display = 'inline-block'; b.textContent = n; }
+  if (n > 0) { b.style.display = 'inline-block'; b.textContent = arDigits(n); }
   else { b.style.display = 'none'; }
 }
 
@@ -287,12 +290,12 @@ function renderRows() {
   }
   box.innerHTML = board.decisions.map(d => `
     <tr>
-      <td class="c">${esc(d.DecisionNumber ?? '')}</td>
+      <td class="c">${arDigits(d.DecisionNumber ?? '')}</td>
       <td>
         <div class="subj">${esc(d.Subject)}</div>
         <div class="decision-text">${esc(d.DecisionText)}</div>
       </td>
-      <td class="c">${esc(d.SessionNumber ?? '')}<div class="decision-text">${fmtDate(d.SessionDate)}</div></td>
+      <td class="c">${arDigits(d.SessionNumber ?? '')}<div class="decision-text">${fmtDate(d.SessionDate)}</div></td>
       <td class="o">${d.Orgs.map(orgChip).join('')}</td>
     </tr>`).join('');
 }
@@ -316,7 +319,7 @@ async function openDetail(followUpId) {
   try {
     const d = await API.call('getFollowUpDetail', { FollowUpID: followUpId });
     document.getElementById('mdOrg').textContent = d.OrgName;
-    document.getElementById('mdSubject').textContent = `القرار رقم ${d.DecisionNumber ?? ''} — الجلسة ${d.SessionNumber ?? ''} (${fmtDate(d.SessionDate)})`;
+    document.getElementById('mdSubject').textContent = `القرار رقم ${arDigits(d.DecisionNumber ?? '')} — الجلسة ${arDigits(d.SessionNumber ?? '')} (${fmtDate(d.SessionDate)})`;
     document.getElementById('mdDecisionText').textContent = d.DecisionText || d.Subject || '—';
 
     const stSel = document.getElementById('mdStatus');
@@ -392,13 +395,13 @@ async function loadBell() {
   try {
     const r = await API.call('getRecentFollowUpActivity', { limit: 15 });
     const dot = document.getElementById('bellDot');
-    if (r.lateCount > 0) { dot.style.display = 'flex'; dot.textContent = r.lateCount > 99 ? '99+' : r.lateCount; }
+    if (r.lateCount > 0) { dot.style.display = 'flex'; dot.textContent = r.lateCount > 99 ? '٩٩+' : arDigits(r.lateCount); }
     else { dot.style.display = 'none'; }
-    document.getElementById('bellCnt').textContent = r.logs.length ? `${r.logs.length} تحديث` : '';
+    document.getElementById('bellCnt').textContent = r.logs.length ? `${arDigits(r.logs.length)} تحديث` : '';
     document.getElementById('bellList').innerHTML = r.logs.length
       ? r.logs.map(l => `
         <div class="bell-item">
-          <div class="top"><span>${esc(l.OrgName)}${l.SessionNumber !== '' ? ' · الجلسة ' + esc(l.SessionNumber) : ''}</span><span>${fmtDateTime(l.CreatedAt)}</span></div>
+          <div class="top"><span>${esc(l.OrgName)}${l.SessionNumber !== '' ? ' · الجلسة ' + arDigits(l.SessionNumber) : ''}</span><span>${fmtDateTime(l.CreatedAt)}</span></div>
           <div class="subj">${esc(l.Subject)}</div>
           <div>الحالة: ${esc(l.StatusLabel || 'بدون حالة')}</div>
           ${l.Note ? `<div class="note">${esc(l.Note)}</div>` : ''}

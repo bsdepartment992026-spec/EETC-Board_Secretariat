@@ -87,7 +87,7 @@ async function build() {
   const company = setting(settings, 'CompanyName') || 'الشركة';
   const board = setting(settings, 'BoardName') || 'مجلس الإدارة';
   const today = new Date();
-  const todayStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+  const todayStr = AR.digits(today.getFullYear() + '/' + (today.getMonth() + 1) + '/' + today.getDate());
 
   const headerHtml = `
     <div class="hdr-co">${esc(company)}</div>

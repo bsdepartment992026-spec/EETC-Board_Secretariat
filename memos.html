@@ -26,6 +26,8 @@
            cursor:pointer; font-size:13.5px; font-weight:600; margin-top:18px; font-family:inherit; }
   button:hover { background:#0F1A2C; }
   button:disabled { background:#9AA3AF; cursor:default; }
+  button.secondary { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button.secondary:hover { background:var(--paper); }
   .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink);
            color:#fff; padding:10px 20px; border-radius:5px; font-size:13px; display:none; z-index:10; }
   .hint { font-size:11.5px; color:var(--ink-soft); margin-top:4px; }
@@ -78,9 +80,10 @@
 
     <label>نسخة ممسوحة ضوئيًا من المذكرة (اختياري الآن، يمكن إضافتها لاحقًا)</label>
     <input type="file" id="scanFile" accept=".pdf,.jpg,.jpeg,.png">
-    <div class="hint">لو ظهرت رسالة خطأ صلاحيات عند الرفع، راجع إعداد Google Drive مع فريق الدعم.</div>
 
     <button id="saveBtn" onclick="saveMemo()">حفظ المذكرة</button>
+    <button id="insertBtn" class="secondary" onclick="saveAndInsert()" style="display:none">إدراج المذكرة في الجلسة الحالية</button>
+    <div class="hint" id="insertHint" style="display:none">إدراج المذكرة في الجلسة الحالية مباشرة بدون المرور بجدول الإجمالي.</div>
   </div>
 </div>
 
@@ -127,45 +130,50 @@ function fileToBase64(file) {
   });
 }
 
-async function saveMemo() {
+function collectMemoPayload() {
   const subject = document.getElementById('subject').value.trim();
   const orgId = document.getElementById('orgSelect').value;
+  if (!subject) { toast('اكتب موضوع المذكرة أولًا'); return null; }
+  if (!orgId) { toast('اختر الجهة صاحبة المذكرة'); return null; }
+  return {
+    Subject: subject,
+    OrganizationID: orgId,
+    IncomingDate: document.getElementById('incomingDate').value,
+    ReceiptTime: document.getElementById('receiptTime').value,
+    ChairmanOutgoingNo: document.getElementById('chairmanNo').value.trim(),
+    ChairmanOutgoingDate: document.getElementById('chairmanDate').value,
+    Notes: document.getElementById('notes').value.trim()
+  };
+}
+
+async function withScanFile(payload) {
+  const file = document.getElementById('scanFile').files[0];
+  if (file) {
+    payload.fileBase64 = await fileToBase64(file);
+    payload.fileName = file.name;
+    payload.mimeType = file.type || 'application/octet-stream';
+  }
+  return payload;
+}
+
+function clearMemoForm() {
+  ['subject', 'incomingDate', 'receiptTime', 'chairmanNo', 'chairmanDate', 'notes'].forEach(function (id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('scanFile').value = '';
+}
+
+async function saveMemo() {
+  const payload = collectMemoPayload();
+  if (!payload) return;
   const btn = document.getElementById('saveBtn');
-
-  if (!subject) { toast('اكتب موضوع المذكرة أولًا'); return; }
-  if (!orgId) { toast('اختر الجهة صاحبة المذكرة'); return; }
-
   btn.disabled = true;
   btn.textContent = 'جارٍ الحفظ...';
-
   try {
-    const payload = {
-      Subject: subject,
-      OrganizationID: orgId,
-      IncomingDate: document.getElementById('incomingDate').value,
-      ReceiptTime: document.getElementById('receiptTime').value,
-      ChairmanOutgoingNo: document.getElementById('chairmanNo').value.trim(),
-      ChairmanOutgoingDate: document.getElementById('chairmanDate').value,
-      Notes: document.getElementById('notes').value.trim()
-    };
-
-    const file = document.getElementById('scanFile').files[0];
-    if (file) {
-      payload.fileBase64 = await fileToBase64(file);
-      payload.fileName = file.name;
-      payload.mimeType = file.type || 'application/octet-stream';
-    }
-
+    await withScanFile(payload);
     await API.call('addMemo', payload);
     toast('تم حفظ المذكرة بنجاح — ستظهر في شاشة الرول عند التحضير للجلسة');
-
-    document.getElementById('subject').value = '';
-    document.getElementById('incomingDate').value = '';
-    document.getElementById('receiptTime').value = '';
-    document.getElementById('chairmanNo').value = '';
-    document.getElementById('chairmanDate').value = '';
-    document.getElementById('notes').value = '';
-    document.getElementById('scanFile').value = '';
+    clearMemoForm();
   } catch (e) {
     toast('خطأ: ' + (e && e.message ? e.message : 'حدث خطأ غير متوقع، جرّب مرة أخرى.'));
   } finally {
@@ -174,7 +182,41 @@ async function saveMemo() {
   }
 }
 
+async function saveAndInsert() {
+  const payload = collectMemoPayload();
+  if (!payload) return;
+  const btn = document.getElementById('insertBtn');
+  btn.disabled = true;
+  btn.textContent = 'جارٍ الإدراج...';
+  try {
+    await withScanFile(payload);
+    const saved = await API.call('addMemo', payload);
+    const memoId = (saved && saved.memo) ? saved.memo.MemoID : '';
+
+    const meetings = await API.call('listMeetings');
+    if (!meetings || !meetings.length) {
+      toast('تم حفظ المذكرة، لكن لا توجد جلسة حالية لإدراجها فيها — أدرجها لاحقًا من إجمالي المذكرات.');
+      clearMemoForm();
+      return;
+    }
+    const res = await API.call('addRollMemosBulk', { MeetingID: meetings[0].MeetingID, MemoIDs: [memoId] });
+    if (res && res.added) toast('تم إدراج المذكرة في الجلسة الحالية بنجاح ✅');
+    else toast('تم حفظ المذكرة، لكن تعذّر إدراجها في الجلسة الحالية.');
+    clearMemoForm();
+  } catch (e) {
+    toast('خطأ: ' + (e && e.message ? e.message : 'حدث خطأ غير متوقع، جرّب مرة أخرى.'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'إدراج المذكرة في الجلسة الحالية';
+  }
+}
+
 loadOrganizations().catch(e => toast('خطأ في تحميل الجهات: ' + e.message));
+
+if (API.hasPermission('ManageMeetings')) {
+  document.getElementById('insertBtn').style.display = 'inline-block';
+  document.getElementById('insertHint').style.display = 'block';
+}
 </script>
 <div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:40px;border-top:1px solid #E2E5EA;">تصميم وتنفيذ أحمد أسامة حميده</div>
 </body>

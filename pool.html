@@ -119,7 +119,7 @@ async function loadAll() {
   S.pool = pool; S.meetings = meetings;
   const today = new Date();
   document.getElementById('title').textContent =
-    `إجمالي المذكرات حتى ${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+    `إجمالي المذكرات حتى ${AR.digits(today.getFullYear() + '/' + (today.getMonth() + 1) + '/' + today.getDate())}`;
   renderMeetOptions();
   renderPool();
 }

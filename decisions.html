@@ -41,6 +41,9 @@
   th.sub, td.sub { width:230px; }
   th.e, td.e { width:165px; }
   th.n, td.n { width:190px; }
+  th.st, td.st { width:120px; }
+  td select.status { width:100%; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:inherit; font-size:12.5px; background:#fff; }
+  td select.status:focus { outline:none; border-color:var(--accent); }
   td.sub .subj { font-size:12.5px; line-height:1.6; max-height:120px; overflow-y:auto; padding-inline-end:4px; }
   td.muted { color:var(--ink-soft); }
   td textarea { width:100%; height:92px; resize:vertical; overflow-y:auto; border:1px solid var(--line); border-radius:5px; padding:7px 8px; font-family:'Times New Roman', serif; font-size:14px; line-height:1.5; color:var(--ink); }
@@ -105,8 +108,9 @@
             <th>القرار</th>
             <th class="e">جهة التنفيذ</th>
             <th class="n">ملاحظات</th>
+            <th class="st">حالة القرار</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="5" class="empty">جارٍ التحميل...</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="6" class="empty">جارٍ التحميل...</td></tr></tbody>
         </table>
       </div>
 
@@ -138,7 +142,7 @@ if (!API.hasPermission('ManageDecisions')) {
   window.location.href = 'index.html';
 }
 
-const S = { meetings: [], meetingId: '', meeting: null, items: [], orgs: [], phrases: [], execMap: {}, approved: false };
+const S = { meetings: [], meetingId: '', meeting: null, items: [], orgs: [], phrases: [], statuses: [], execMap: {}, approved: false };
 const E = AR.esc;
 const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 function toAr(v) { return String(v == null ? '' : v).replace(/[0-9]/g, d => AR_DIGITS[+d]); }
@@ -167,7 +171,7 @@ function meetingLabel(m) {
 async function loadMeetings() {
   S.meetings = await API.call('listMeetings');
   if (!S.meetings.length) {
-    document.getElementById('rows').innerHTML = '<tr><td colspan="5" class="empty">لا توجد جلسات بعد. أنشئ جلسة واعتمد رولها أولًا.</td></tr>';
+    document.getElementById('rows').innerHTML = '<tr><td colspan="6" class="empty">لا توجد جلسات بعد. أنشئ جلسة واعتمد رولها أولًا.</td></tr>';
     return;
   }
   const sel = document.getElementById('meetingSel');
@@ -185,6 +189,7 @@ async function loadMeeting(id) {
   S.meeting = res.meeting;
   S.orgs = res.orgs || [];
   S.phrases = res.phrases || [];
+  S.statuses = res.statuses || [];
   S.approved = !!res.approved;
 
   S.items = (res.items || []).map(it => {
@@ -216,7 +221,7 @@ function renderPhrases() {
 function render() {
   const box = document.getElementById('rows');
   if (!S.items.length) {
-    box.innerHTML = '<tr><td colspan="5" class="empty">لا توجد بنود في رول هذه الجلسة.</td></tr>';
+    box.innerHTML = '<tr><td colspan="6" class="empty">لا توجد بنود في رول هذه الجلسة.</td></tr>';
     return;
   }
   box.innerHTML = S.items.map(it => {
@@ -228,9 +233,15 @@ function render() {
       <td><textarea id="dec-${E(id)}" placeholder="اكتب نص القرار...">${E(it.DecisionText)}</textarea></td>
       <td class="e"><button type="button" class="exec-btn" id="execbtn-${E(id)}" onclick="openExec('${E(id)}')"></button></td>
       <td class="n"><input class="note" id="note-${E(id)}" value="${E(it.ExecNote)}" placeholder="ملاحظات"></td>
+      <td class="st"><select class="status" id="st-${E(id)}">${statusOptions(it.StatusID)}</select></td>
     </tr>`;
   }).join('');
   S.items.forEach(it => updateExecBtn(it.RollItemID));
+}
+
+function statusOptions(selId) {
+  return '<option value="">—</option>' + S.statuses.map(s =>
+    `<option value="${E(s.ItemID)}" ${s.ItemID === selId ? 'selected' : ''}>${E(s.Label)}</option>`).join('');
 }
 
 function orgName(orgId) {
@@ -284,6 +295,7 @@ function collectItems() {
     Subject: it._subject,
     DecisionText: (document.getElementById('dec-' + it.RollItemID) || {}).value || '',
     Notes: (document.getElementById('note-' + it.RollItemID) || {}).value || '',
+    StatusID: (document.getElementById('st-' + it.RollItemID) || {}).value || '',
     ExecutingEntityIDs: S.execMap[it.RollItemID] || []
   }));
 }
