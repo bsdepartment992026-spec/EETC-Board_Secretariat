@@ -96,6 +96,9 @@
 
       <div class="toolbar">
         <span class="grow cnt" id="count"></span>
+        <button class="ghost small" id="memoBtn" onclick="openFile('memo')" disabled>📄 المذكرة</button>
+        <button class="ghost small" id="decBtn" onclick="openFile('decision')" disabled>📋 القرار</button>
+        <button class="ghost small" id="consBtn" onclick="openFile('meeting')" disabled>📚 المجمعة</button>
         <button class="accent small" id="sendBtn" onclick="sendWhatsApp()" disabled>📤 إرسال واتساب</button>
         <button class="ghost small" id="linkBtn" style="display:none" onclick="linkMemos()">🔗 ربط بالمذكرات</button>
         <button class="ghost small" onclick="printResults()">🖨️ طباعة النتائج</button>
@@ -112,10 +115,9 @@
             <th class="n">رقم المذكرة</th>
             <th>الموضوع</th>
             <th class="e">جهة العرض</th>
-            <th class="p">مسار القرار</th>
             <th class="st">حالة القرار</th>
           </tr></thead>
-          <tbody id="rows"><tr><td colspan="9" class="empty">جارٍ التحميل...</td></tr></tbody>
+          <tbody id="rows"><tr><td colspan="8" class="empty">جارٍ التحميل...</td></tr></tbody>
         </table>
       </div>
 
@@ -143,7 +145,7 @@ if (API.hasPermission('ManageMeetings')) {
   document.getElementById('linkBtn').style.display = '';
 }
 
-const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [], fileCache: {} };
+const S = { page: 1, pageSize: 50, total: 0, pageCount: 1, items: [], fileCache: {}, rowsById: {} };
 const E = AR.esc;
 
 function toast(msg) {
@@ -197,14 +199,16 @@ function render() {
     S.total ? `إجمالي النتائج: ${S.total} قرار` : '';
 
   if (!S.items.length) {
-    box.innerHTML = '<tr><td colspan="9" class="empty">لا توجد نتائج مطابقة. جرّب تعديل معايير البحث.</td></tr>';
+    box.innerHTML = '<tr><td colspan="8" class="empty">لا توجد نتائج مطابقة. جرّب تعديل معايير البحث.</td></tr>';
   } else {
+    S.rowsById = {};
     box.innerHTML = S.items.map(r => {
+      S.rowsById[r.ArchiveID] = r;
       const date = AR.formatDate(r.SessionDate);
       const note = r.Notes ? ` title="${E(String(r.Notes))}"` : '';
       const chk = r.HasFile
-        ? `<input type="checkbox" class="rowchk" value="${E(r.DocID)}" onchange="onRowCheck(this)">`
-        : `<span class="muted" title="لا يوجد ملف قرار">—</span>`;
+        ? `<input type="checkbox" class="rowchk" value="${E(r.ArchiveID)}" onchange="onRowCheck(this)">`
+        : `<span class="muted" title="لا توجد ملفات مرتبطة">—</span>`;
       return `<tr${note}>
         <td class="k">${chk}</td>
         <td class="c">${E(r.Year)}</td>
@@ -213,7 +217,6 @@ function render() {
         <td class="n">${E(r.MemoNumber)}</td>
         <td><div class="subj">${E(r.Subject)}</div></td>
         <td class="e">${E(r.PresentingEntity) || '<span class="muted">—</span>'}</td>
-        <td class="p">${E(r.DecisionPath) || '<span class="muted">—</span>'}</td>
         <td class="st">${E(r.StatusLabel) || '<span class="muted">—</span>'}</td>
       </tr>`;
     }).join('');
@@ -233,12 +236,47 @@ function toggleAll(cb) {
   document.querySelectorAll('#rows .rowchk').forEach(c => { c.checked = cb.checked; });
   onRowCheck();
 }
-function selectedDocIds() {
+function selectedRowIds() {
   return Array.from(document.querySelectorAll('#rows .rowchk:checked')).map(c => c.value);
 }
+function selectedRows() {
+  return selectedRowIds().map(id => S.rowsById[id]).filter(Boolean);
+}
 function onRowCheck(el) {
-  if (el && el.checked) prefetchFile(el.value);
-  document.getElementById('sendBtn').disabled = selectedDocIds().length === 0;
+  const rows = selectedRows();
+  if (el && el.checked) {
+    const r = S.rowsById[el.value];
+    if (r) prefetchFile(r.DecisionDocID || r.DocID);
+  }
+  document.getElementById('sendBtn').disabled = !rows.some(r => r.DecisionDocID || r.DocID);
+  const one = rows.length === 1 ? rows[0] : null;
+  document.getElementById('memoBtn').disabled = !(one && one.MemoDocID);
+  document.getElementById('decBtn').disabled = !(one && (one.DecisionDocID || one.DocID));
+  document.getElementById('consBtn').disabled = !(one && one.MeetingDocID);
+}
+async function openFile(kind) {
+  const rows = selectedRows();
+  if (rows.length !== 1) { toast('حدّد صفًا واحدًا فقط.'); return; }
+  const r = rows[0];
+  const docId = kind === 'memo' ? r.MemoDocID
+    : kind === 'meeting' ? r.MeetingDocID
+      : (r.DecisionDocID || r.DocID);
+  if (!docId) { toast('الملف غير متاح لهذا الصف.'); return; }
+  const w = window.open('', '_blank');
+  toast('جارٍ فتح الملف...');
+  try {
+    const f = await API.call('getArchiveFile', { DocID: docId });
+    const bin = atob(f.Base64 || '');
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: f.MimeType || 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    if (w) { w.location.href = url; } else { window.open(url, '_blank'); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) {
+    if (w) w.close();
+    toast('خطأ: ' + e.message);
+  }
 }
 function base64ToFile(f) {
   const bin = atob(f.Base64 || '');
@@ -284,8 +322,9 @@ async function prefetchFile(docId) {
   } catch (e) { S.fileCache[docId] = null; return null; }
 }
 async function sendWhatsApp() {
-  const ids = selectedDocIds();
-  if (!ids.length) return;
+  const rows = selectedRows();
+  const ids = rows.map(r => r.DecisionDocID || r.DocID).filter(Boolean);
+  if (!ids.length) { toast('لا يوجد ملف قرار للصفوف المحددة.'); return; }
   toast('جارٍ تجهيز الملف...');
   const files = [];
   for (const docId of ids) {
@@ -338,7 +377,6 @@ async function printResults() {
       <td class="n">${E(AR.digits(r.MemoNumber))}</td>
       <td>${E(AR.digits(r.Subject))}</td>
       <td class="e">${E(AR.digits(r.PresentingEntity)) || '—'}</td>
-      <td class="p">${E(AR.digits(r.DecisionPath)) || '—'}</td>
       <td class="c">${E(AR.digits(r.StatusLabel)) || '—'}</td>
     </tr>`).join('');
 
@@ -359,7 +397,7 @@ async function printResults() {
     <div class="meta">عدد النتائج: ${AR.digits(res.total)} — بتاريخ الطباعة: ${(() => { const t = new Date(); return AR.digits(t.getFullYear() + '/' + (t.getMonth() + 1) + '/' + t.getDate()); })()}</div>
     <table><thead><tr>
       <th>السنة</th><th>الجلسة</th><th>التاريخ</th><th>رقم المذكرة</th>
-      <th>الموضوع</th><th>جهة العرض</th><th>مسار القرار</th><th>حالة القرار</th>
+      <th>الموضوع</th><th>جهة العرض</th><th>حالة القرار</th>
     </tr></thead><tbody>${rows}</tbody></table>
     </body></html>`);
   w.document.close();
