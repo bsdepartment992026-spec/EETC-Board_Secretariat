@@ -53,6 +53,21 @@
   .exec-btn.has { border-style:solid; color:var(--ink); }
   .empty { padding:30px 18px; text-align:center; color:var(--ink-soft); font-size:13px; }
 
+  /* المحرّر المنسّق */
+  .rt-toolbar { display:flex; gap:4px; padding:8px 14px; border-bottom:1px solid var(--line); background:#F7F7F5; flex-wrap:wrap; align-items:center; }
+  .rt-toolbar button { background:#fff; border:1px solid var(--line); color:var(--ink); padding:5px 9px; font-size:12px; border-radius:4px; font-weight:600; min-width:30px; }
+  .rt-toolbar button:hover { background:var(--paper); }
+  .rt-toolbar select, .rt-toolbar input[type=color] { border:1px solid var(--line); border-radius:4px; background:#fff; font-family:inherit; font-size:12px; padding:3px 5px; height:29px; }
+  .rt-toolbar input[type=color] { width:34px; padding:2px; }
+  .rt-toolbar .rt-sep { width:1px; height:20px; background:var(--line); margin:0 4px; }
+  .rt-toolbar .rt-lbl { font-size:11px; color:var(--ink-soft); }
+  td .editor { min-height:92px; max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:5px; padding:8px 9px; font-family:'Times New Roman', serif; font-size:14px; line-height:1.65; background:#fff; direction:rtl; text-align:right; }
+  td .editor:focus { outline:none; border-color:var(--accent); }
+  td .editor[contenteditable]:empty:before { content:attr(data-ph); color:#9aa3af; }
+  td .editor table { border-collapse:collapse; width:100%; margin:4px 0; }
+  td .editor table td, td .editor table th { border:1px solid #999; padding:4px 6px; vertical-align:top; }
+  td .editor ul, td .editor ol { margin:4px 22px 4px 0; padding:0; }
+
   .docs { padding:12px 14px; border-top:1px solid var(--line); background:#FAFAF9; font-size:12.5px; }
   .docs h4 { margin:0 0 8px; font-size:13px; }
   .docs a { color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--ink-soft); margin-inline-end:14px; display:inline-block; margin-bottom:6px; }
@@ -98,6 +113,38 @@
         <button class="accent" id="approveBtn" onclick="approve()">✅ اعتماد قرارات الجلسة</button>
         <button class="ghost" id="uploadBtn" onclick="document.getElementById('fileInput').click()">📎 رفع ملف القرارات المعتمد</button>
         <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="onFilePick(this)">
+      </div>
+
+      <div class="rt-toolbar" id="rtToolbar">
+        <span class="rt-lbl">تنسيق القرار المحدّد:</span>
+        <button type="button" title="غامق" onmousedown="return false" onclick="rtCmd('bold')"><b>B</b></button>
+        <button type="button" title="مائل" onmousedown="return false" onclick="rtCmd('italic')"><i>I</i></button>
+        <button type="button" title="تسطير" onmousedown="return false" onclick="rtCmd('underline')"><u>U</u></button>
+        <select title="حجم الخط" onmousedown="return false" onchange="rtSize(this)">
+          <option value="">الحجم</option>
+          <option value="11pt">11</option>
+          <option value="12pt">12</option>
+          <option value="14pt">14</option>
+          <option value="16pt">16</option>
+          <option value="18pt">18</option>
+          <option value="22pt">22</option>
+        </select>
+        <input type="color" title="لون النص" value="#1b2a41" onmousedown="return false" onchange="rtColor(this)">
+        <span class="rt-sep"></span>
+        <button type="button" title="محاذاة يمين" onmousedown="return false" onclick="rtCmd('justifyRight')">⇥</button>
+        <button type="button" title="توسيط" onmousedown="return false" onclick="rtCmd('justifyCenter')">↔</button>
+        <button type="button" title="محاذاة يسار" onmousedown="return false" onclick="rtCmd('justifyLeft')">⇤</button>
+        <button type="button" title="ضبط" onmousedown="return false" onclick="rtCmd('justifyFull')">≡</button>
+        <span class="rt-sep"></span>
+        <button type="button" title="قائمة نقطية" onmousedown="return false" onclick="rtCmd('insertUnorderedList')">• قائمة</button>
+        <button type="button" title="قائمة رقمية" onmousedown="return false" onclick="rtCmd('insertOrderedList')">1. قائمة</button>
+        <span class="rt-sep"></span>
+        <button type="button" title="إدراج جدول" onmousedown="return false" onclick="rtInsertTable()">▦ جدول</button>
+        <button type="button" title="إضافة صف أسفل" onmousedown="return false" onclick="rtTableRow(false)">+صف</button>
+        <button type="button" title="حذف صف" onmousedown="return false" onclick="rtTableRow(true)">-صف</button>
+        <button type="button" title="إضافة عمود" onmousedown="return false" onclick="rtTableCol(false)">+عمود</button>
+        <button type="button" title="حذف عمود" onmousedown="return false" onclick="rtTableCol(true)">-عمود</button>
+        <button type="button" title="حذف الجدول" onmousedown="return false" onclick="rtTableDel()">🗑 جدول</button>
       </div>
 
       <div class="table-scroll">
@@ -230,13 +277,17 @@ function render() {
     return `<tr data-roll="${E(id)}">
       <td class="c">${E(toAr(num))}</td>
       <td class="sub"><div class="subj">${E(it._subject)}</div></td>
-      <td><textarea id="dec-${E(id)}" placeholder="اكتب نص القرار...">${E(it.DecisionText)}</textarea></td>
+      <td><div class="editor" contenteditable="true" id="dec-${E(id)}" data-ph="اكتب نص القرار..."></div></td>
       <td class="e"><button type="button" class="exec-btn" id="execbtn-${E(id)}" onclick="openExec('${E(id)}')"></button></td>
       <td class="n"><input class="note" id="note-${E(id)}" value="${E(it.ExecNote)}" placeholder="ملاحظات"></td>
       <td class="st"><select class="status" id="st-${E(id)}">${statusOptions(it.StatusID)}</select></td>
     </tr>`;
   }).join('');
-  S.items.forEach(it => updateExecBtn(it.RollItemID));
+  S.items.forEach(it => {
+    const ed = document.getElementById('dec-' + it.RollItemID);
+    if (ed) ed.innerHTML = blocksToHtml(parseDecisionData(it.DecisionData, it.DecisionText));
+    updateExecBtn(it.RollItemID);
+  });
 }
 
 function statusOptions(selId) {
@@ -288,16 +339,21 @@ function saveExec() {
 
 /* ---------------- جمع البيانات ---------------- */
 function collectItems() {
-  return S.items.map(it => ({
-    RollItemID: it.RollItemID,
-    MemoID: it.MemoID || '',
-    DecisionNumber: it.RollNumber,
-    Subject: it._subject,
-    DecisionText: (document.getElementById('dec-' + it.RollItemID) || {}).value || '',
-    Notes: (document.getElementById('note-' + it.RollItemID) || {}).value || '',
-    StatusID: (document.getElementById('st-' + it.RollItemID) || {}).value || '',
-    ExecutingEntityIDs: S.execMap[it.RollItemID] || []
-  }));
+  return S.items.map(it => {
+    const ed = document.getElementById('dec-' + it.RollItemID);
+    const blocks = ed ? serializeEditor(ed) : [];
+    return {
+      RollItemID: it.RollItemID,
+      MemoID: it.MemoID || '',
+      DecisionNumber: it.RollNumber,
+      Subject: it._subject,
+      DecisionText: ed ? (ed.innerText || '').trim() : '',
+      DecisionData: JSON.stringify(blocks),
+      Notes: (document.getElementById('note-' + it.RollItemID) || {}).value || '',
+      StatusID: (document.getElementById('st-' + it.RollItemID) || {}).value || '',
+      ExecutingEntityIDs: S.execMap[it.RollItemID] || []
+    };
+  });
 }
 
 async function saveAll(silent) {
@@ -311,12 +367,336 @@ function insertPhrase() {
   const p = S.phrases.find(x => x.ItemID === sel.value);
   sel.value = '';
   if (!p) return;
-  const ta = document.activeElement;
-  const target = (ta && ta.tagName === 'TEXTAREA' && /^dec-/.test(ta.id)) ? ta : document.querySelector('textarea[id^="dec-"]');
-  if (!target) return;
-  target.value = (target.value ? target.value.replace(/\s*$/, '') + '\n' : '') + (p.Value || p.Label);
-  target.focus();
+  const ed = lastEditor || document.querySelector('.editor');
+  if (!ed) return;
+  ed.focus();
+  const text = p.Value || p.Label || '';
+  document.execCommand('insertHTML', false, E(text).replace(/\n/g, '<br>'));
 }
+
+/* ================= المحرّر المنسّق (Bold/Underline/ألوان/جداول/قوائم) ================= */
+let lastEditor = null, savedRange = null;
+
+document.addEventListener('focusin', function (e) {
+  if (e.target && e.target.classList && e.target.classList.contains('editor')) lastEditor = e.target;
+});
+document.addEventListener('selectionchange', function () {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount && lastEditor && lastEditor.contains(sel.getRangeAt(0).startContainer)) {
+    savedRange = sel.getRangeAt(0).cloneRange();
+  }
+});
+function restoreSel() {
+  if (!lastEditor) return;
+  lastEditor.focus();
+  if (savedRange) { const sel = window.getSelection(); sel.removeAllRanges(); try { sel.addRange(savedRange); } catch (e) { } }
+}
+function rtCmd(cmd) {
+  if (!lastEditor) { toast('اختر مربع قرار أولاً'); return; }
+  restoreSel();
+  document.execCommand(cmd, false, null);
+}
+function rtSize(sel) { const v = sel.value; sel.value = ''; if (v) rtWrapStyle('font-size', v); }
+function rtColor(inp) { const v = inp.value; if (v) rtWrapStyle('color', v); }
+function rtWrapStyle(prop, value) {
+  if (!lastEditor) { toast('اختر مربع قرار أولاً'); return; }
+  restoreSel();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  if (range.collapsed) { toast('حدّد نصًا أولًا'); return; }
+  const span = document.createElement('span');
+  span.style[prop] = value;
+  try { range.surroundContents(span); }
+  catch (e) { const frag = range.extractContents(); span.appendChild(frag); range.insertNode(span); }
+  sel.removeAllRanges();
+  const r = document.createRange(); r.selectNodeContents(span); sel.addRange(r);
+  savedRange = sel.getRangeAt(0).cloneRange();
+}
+function currentEditorCell() {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  let n = sel.getRangeAt(0).startContainer;
+  while (n && n !== lastEditor) {
+    if (n.nodeType === 1 && (n.tagName === 'TD' || n.tagName === 'TH')) return n;
+    n = n.parentNode;
+  }
+  return null;
+}
+function rtInsertTable() {
+  if (!lastEditor) { toast('اختر مربع قرار أولاً'); return; }
+  const dims = prompt('عدد الصفوف × الأعمدة (مثال: 3x4)', '3x4');
+  if (!dims) return;
+  const m = /^\s*(\d+)\s*[x×,]\s*(\d+)\s*$/.exec(dims);
+  if (!m) { toast('صيغة غير صحيحة. مثال: 3x4'); return; }
+  const rows = Math.min(50, Math.max(1, +m[1])), cols = Math.min(15, Math.max(1, +m[2]));
+  let html = '<table><tbody>';
+  for (let i = 0; i < rows; i++) { html += '<tr>'; for (let j = 0; j < cols; j++) html += '<td><br></td>'; html += '</tr>'; }
+  html += '</tbody></table><p><br></p>';
+  restoreSel();
+  document.execCommand('insertHTML', false, html);
+}
+function rtTableRow(del) {
+  const cell = currentEditorCell();
+  if (!cell) { toast('ضع المؤشر داخل جدول'); return; }
+  const tr = cell.parentNode, table = tr.closest('table');
+  if (del) {
+    if (table.querySelectorAll('tr').length <= 1) { table.remove(); return; }
+    tr.remove(); return;
+  }
+  const nt = document.createElement('tr');
+  for (let i = 0; i < tr.children.length; i++) { const td = document.createElement('td'); td.innerHTML = '<br>'; nt.appendChild(td); }
+  tr.parentNode.insertBefore(nt, tr.nextSibling);
+}
+function rtTableCol(del) {
+  const cell = currentEditorCell();
+  if (!cell) { toast('ضع المؤشر داخل جدول'); return; }
+  const tr = cell.parentNode, table = tr.closest('table');
+  const idx = Array.prototype.indexOf.call(tr.children, cell);
+  const rows = Array.from(table.querySelectorAll('tr'));
+  if (del) {
+    if (tr.children.length <= 1) { table.remove(); return; }
+    rows.forEach(r => { if (r.children[idx]) r.children[idx].remove(); });
+    return;
+  }
+  rows.forEach(r => { const td = document.createElement('td'); td.innerHTML = '<br>'; const ref = r.children[idx]; r.insertBefore(td, ref ? ref.nextSibling : null); });
+}
+function rtTableDel() {
+  const cell = currentEditorCell();
+  if (!cell) { toast('ضع المؤشر داخل جدول'); return; }
+  const table = cell.closest('table');
+  if (table) table.remove();
+}
+
+/* ---- لصق من Word/Excel مع الاحتفاظ بالجداول والتنسيق ---- */
+const RT_ALLOWED_TAGS = { B:1, STRONG:1, I:1, EM:1, U:1, S:1, SPAN:1, FONT:1, BR:1, P:1, DIV:1,
+  H1:1, H2:1, H3:1, H4:1, H5:1, H6:1, UL:1, OL:1, LI:1, TABLE:1, THEAD:1, TBODY:1, TFOOT:1, TR:1, TD:1, TH:1 };
+const RT_ALLOWED_STYLE = { color:1, 'font-size':1, 'font-weight':1, 'text-decoration':1, 'text-align':1, 'font-style':1, 'font-family':1 };
+function rtCleanStyle(s) {
+  return String(s).split(';').map(function (p) {
+    const i = p.indexOf(':'); if (i < 0) return '';
+    const k = p.slice(0, i).trim().toLowerCase(), v = p.slice(i + 1).trim();
+    return (RT_ALLOWED_STYLE[k] && v) ? k + ':' + v : '';
+  }).filter(Boolean).join(';');
+}
+function rtCleanNode(node) {
+  Array.from(node.childNodes).forEach(function (ch) {
+    if (ch.nodeType === 3) return;
+    if (ch.nodeType !== 1) { ch.remove(); return; }
+    const tag = ch.tagName;
+    if (!RT_ALLOWED_TAGS[tag]) {
+      const parent = ch.parentNode;
+      while (ch.firstChild) parent.insertBefore(ch.firstChild, ch);
+      ch.remove();
+      rtCleanNode(parent);
+      return;
+    }
+    Array.from(ch.attributes).forEach(function (a) {
+      const n = a.name.toLowerCase();
+      if (n === 'style') ch.setAttribute('style', rtCleanStyle(a.value));
+      else if ((n === 'colspan' || n === 'rowspan') && (tag === 'TD' || tag === 'TH')) { /* keep */ }
+      else ch.removeAttribute(a.name);
+    });
+    rtCleanNode(ch);
+  });
+}
+function rtSanitizeHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  rtCleanNode(doc.body);
+  return doc.body.innerHTML;
+}
+function rtOnPaste(e) {
+  const ed = e.target.closest ? e.target.closest('.editor') : null;
+  if (!ed) return;
+  const html = e.clipboardData && e.clipboardData.getData('text/html');
+  if (!html) return;
+  e.preventDefault();
+  lastEditor = ed;
+  document.execCommand('insertHTML', false, rtSanitizeHtml(html));
+}
+
+/* ---- DOM -> نموذج البلوكات ---- */
+function rtNormColor(v) {
+  v = String(v || '').trim();
+  let m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(v);
+  if (m) return '#' + [1, 2, 3].map(i => (+m[i]).toString(16).padStart(2, '0')).join('');
+  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
+  if (/^#[0-9a-f]{3}$/i.test(v)) return '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+  return v;
+}
+function rtPxToPt(v) {
+  v = String(v || '').trim().toLowerCase();
+  let m = /^([\d.]+)\s*pt$/.exec(v); if (m) return Math.round(+m[1]);
+  m = /^([\d.]+)\s*px$/.exec(v); if (m) return Math.round(+m[1] * 0.75);
+  m = /^([\d.]+)\s*em$/.exec(v); if (m) return Math.round(+m[1] * 12);
+  m = /^([\d.]+)$/.exec(v); if (m) return Math.round(+m[1]);
+  return null;
+}
+function rtAlignOfEl(el) {
+  const al = el.getAttribute && el.getAttribute('align');
+  if (al) return String(al).toLowerCase();
+  const ta = /text-align\s*:\s*([^;]+)/i.exec((el.getAttribute && el.getAttribute('style')) || '');
+  if (ta) { const v = ta[1].trim().toLowerCase(); if (/^(right|center|left|justify)$/.test(v)) return v; }
+  return '';
+}
+function rtMergeRuns(runs) {
+  const out = [];
+  runs.forEach(function (r) {
+    if (!r.text) return;
+    const last = out[out.length - 1];
+    if (last && last.b === r.b && last.i === r.i && last.u === r.u && last.c === r.c && last.s === r.s) last.text += r.text;
+    else out.push(Object.assign({}, r));
+  });
+  return out;
+}
+function rtSerializeInline(el, inherited) {
+  inherited = inherited || {};
+  const runs = [];
+  Array.from(el.childNodes).forEach(function (node) {
+    if (node.nodeType === 3) { if (node.nodeValue) runs.push(Object.assign({ text: node.nodeValue }, inherited)); return; }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    const st = Object.assign({}, inherited);
+    if (tag === 'B' || tag === 'STRONG') st.b = true;
+    if (tag === 'I' || tag === 'EM') st.i = true;
+    if (tag === 'U') st.u = true;
+    if (tag === 'FONT') { const c = node.getAttribute('color'); if (c) st.c = rtNormColor(c); }
+    const sty = node.getAttribute('style') || '';
+    let m = /(?:^|;)\s*color\s*:\s*([^;]+)/i.exec(sty); if (m) st.c = rtNormColor(m[1]);
+    m = /(?:^|;)\s*font-size\s*:\s*([^;]+)/i.exec(sty); if (m) { const p = rtPxToPt(m[1]); if (p) st.s = p; }
+    m = /(?:^|;)\s*font-weight\s*:\s*([^;]+)/i.exec(sty); if (m && /bold|[6-9]00/i.test(m[1])) st.b = true;
+    m = /(?:^|;)\s*text-decoration\s*:\s*([^;]+)/i.exec(sty); if (m && /underline/i.test(m[1])) st.u = true;
+    if (tag === 'BR') { runs.push(Object.assign({ text: '\n' }, inherited)); return; }
+    rtSerializeInline(node, st).forEach(function (r) { runs.push(r); });
+  });
+  return rtMergeRuns(runs);
+}
+function rtSplitRuns(runs, align) {
+  const out = []; let cur = [];
+  runs.forEach(function (r) {
+    const parts = String(r.text).split('\n');
+    parts.forEach(function (part, idx) {
+      if (idx > 0) { out.push({ t: 'p', align: align || 'right', runs: cur }); cur = []; }
+      if (part) cur.push(Object.assign({}, r, { text: part }));
+    });
+  });
+  out.push({ t: 'p', align: align || 'right', runs: cur });
+  return out.filter(function (b) { return b.runs.length; });
+}
+function rtHasBlockChild(el) {
+  return Array.from(el.children).some(function (c) { return /^(TABLE|UL|OL|P|DIV|H[1-6])$/.test(c.tagName); });
+}
+function rtSerializeTable(table) {
+  const rows = [];
+  Array.from(table.children).forEach(function (sec) {
+    let trs;
+    if (sec.tagName === 'TR') trs = [sec];
+    else if (sec.tagName === 'THEAD' || sec.tagName === 'TBODY' || sec.tagName === 'TFOOT') trs = Array.from(sec.children).filter(c => c.tagName === 'TR');
+    else return;
+    trs.forEach(function (tr) {
+      const cells = [];
+      Array.from(tr.children).forEach(function (td) {
+        if (td.tagName !== 'TD' && td.tagName !== 'TH') return;
+        let blocks = rtCollectBlocks(td);
+        if (!blocks.length) blocks = [{ t: 'p', align: 'right', runs: [] }];
+        cells.push({ blocks: blocks });
+      });
+      if (cells.length) rows.push(cells);
+    });
+  });
+  return { t: 'table', rows: rows };
+}
+function rtCollectBlocks(root) {
+  const blocks = [];
+  Array.from(root.childNodes).forEach(function (node) {
+    if (node.nodeType === 3) {
+      const txt = node.nodeValue;
+      if (txt && txt.replace(/\s/g, '') !== '') blocks.push({ t: 'p', align: 'right', runs: [{ text: txt }] });
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const tag = node.tagName;
+    if (tag === 'TABLE') { blocks.push(rtSerializeTable(node)); return; }
+    if (tag === 'UL' || tag === 'OL') {
+      const ordered = tag === 'OL';
+      Array.from(node.children).forEach(function (li) {
+        if (li.tagName !== 'LI') return;
+        blocks.push({ t: 'li', ordered: ordered, runs: rtSerializeInline(li) });
+      });
+      return;
+    }
+    if (tag === 'BR') { return; }
+    if (tag === 'P' || tag === 'DIV' || /^H[1-6]$/.test(tag)) {
+      if (rtHasBlockChild(node)) { rtCollectBlocks(node).forEach(function (b) { blocks.push(b); }); return; }
+      rtSplitRuns(rtSerializeInline(node), rtAlignOfEl(node) || 'right').forEach(function (b) { blocks.push(b); });
+      return;
+    }
+    rtSplitRuns(rtSerializeInline(node), 'right').forEach(function (b) { blocks.push(b); });
+  });
+  return blocks;
+}
+function serializeEditor(root) { return rtCollectBlocks(root); }
+
+/* ---- نموذج البلوكات -> HTML (للمحرّر والعرض والطباعة) ---- */
+function parseDecisionData(json, plain) {
+  if (json) { try { const b = JSON.parse(json); if (Array.isArray(b) && b.length) return b; } catch (e) { } }
+  if (plain) return [{ t: 'p', align: 'right', runs: [{ text: String(plain) }] }];
+  return [];
+}
+function runsToHtml(runs) {
+  return (runs || []).map(function (r) {
+    let txt = E(String(r.text == null ? '' : r.text)).replace(/\n/g, '<br>');
+    if (!txt) return '';
+    let inner = txt;
+    if (r.b) inner = '<b>' + inner + '</b>';
+    if (r.i) inner = '<i>' + inner + '</i>';
+    if (r.u) inner = '<u>' + inner + '</u>';
+    const st = [];
+    if (r.c) st.push('color:' + r.c);
+    if (r.s) st.push('font-size:' + r.s + 'pt');
+    if (st.length) inner = '<span style="' + st.join(';') + '">' + inner + '</span>';
+    return inner;
+  }).join('');
+}
+function tableBlockToHtml(b) {
+  let h = '<table><tbody>';
+  (b.rows || []).forEach(function (cells) {
+    h += '<tr>';
+    (cells || []).forEach(function (c) { h += '<td>' + (blocksToHtml((c && c.blocks) || []) || '<br>') + '</td>'; });
+    h += '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+function blocksToHtml(blocks) {
+  let html = '', i = 0;
+  blocks = blocks || [];
+  while (i < blocks.length) {
+    const b = blocks[i];
+    if (b.t === 'li') {
+      const ordered = !!b.ordered; let li = '';
+      while (i < blocks.length && blocks[i].t === 'li' && !!blocks[i].ordered === ordered) {
+        li += '<li>' + (runsToHtml(blocks[i].runs || []) || '<br>') + '</li>'; i++;
+      }
+      html += (ordered ? '<ol>' : '<ul>') + li + (ordered ? '</ol>' : '</ul>');
+      continue;
+    }
+    if (b.t === 'table') { html += tableBlockToHtml(b); i++; continue; }
+    const align = b.align ? ' style="text-align:' + b.align + '"' : '';
+    html += '<p' + align + '>' + (runsToHtml(b.runs || []) || '<br>') + '</p>';
+    i++;
+  }
+  return html;
+}
+function blocksToPlain(blocks) {
+  const parts = [];
+  (blocks || []).forEach(function (b) {
+    if (b.t === 'table') { (b.rows || []).forEach(function (cells) { parts.push((cells || []).map(c => blocksToPlain((c && c.blocks) || [])).join('\t')); }); }
+    else parts.push((b.runs || []).map(r => String(r.text || '')).join(''));
+  });
+  return parts.join('\n');
+}
+
+document.getElementById('rows').addEventListener('paste', rtOnPaste);
 
 /* ---------------- الطباعة ---------------- */
 function printDecisions() {
@@ -324,7 +704,7 @@ function printDecisions() {
   const rows = items.map(r => `<tr>
       <td class="num">${r.DecisionNumber === null || r.DecisionNumber === undefined ? '' : E(toAr(String(r.DecisionNumber)))}</td>
       <td class="subj">${E(AR.digits(r.Subject))}</td>
-      <td class="dec">${E(AR.digits(String(r.DecisionText || '')))}</td>
+      <td class="dec">${blocksToHtml(parseDecisionData(r.DecisionData, r.DecisionText))}</td>
     </tr>`).join('');
   const words = AR.ordinal(S.meeting.SessionNumber);
   const year = toAr(AR.year(S.meeting.SessionDate));
@@ -345,7 +725,10 @@ function printDecisions() {
     .colhead th{text-align:center;font-size:14pt;font-weight:700;border-top:1px solid #000;border-bottom:1px solid #000;}
     td.num{font-size:12pt;text-align:center;white-space:nowrap;}
     td.subj{font-size:12pt;width:29%;}
-    td.dec{font-size:13pt;white-space:pre-wrap;word-wrap:break-word;}
+    td.dec{font-size:13pt;word-wrap:break-word;}
+    td.dec table{border-collapse:collapse;width:100%;}
+    td.dec table td, td.dec table th{border:1px solid #000;padding:3px 5px;vertical-align:top;text-align:right;}
+    td.dec ul, td.dec ol{margin:2px 22px 2px 0;}
     .sig{width:100%;margin-top:24mm;}
     .sig td{width:50%;text-align:center;font-size:14pt;font-weight:700;padding-top:8px;border:none;}
     .wm{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;}
