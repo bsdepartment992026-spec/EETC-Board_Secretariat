@@ -61,6 +61,9 @@
 
   .status-dot { width:7px; height:7px; border-radius:50%; background:var(--success); display:inline-block;
                 margin-left:6px; }
+  .status-dot.off { background:#B3261E; }
+  .off-tag { font-size:11px; color:#B3261E; border:1px solid #E7C2BE; background:#FBEDEC;
+             padding:1px 7px; border-radius:9px; margin-right:5px; }
 
   .row-actions { text-align:left; }
   .link-btn { background:none; border:none; color:var(--danger); font-size:12.5px; cursor:pointer;
@@ -406,15 +409,23 @@ function renderStaticList(listKey) {
 function fillStaticRows(listKey) {
   const isSpecial = listKey === 'SpecialItemType';
   const items = cache.settings.filter(s => s.ListName === listKey);
-  document.getElementById('staticRows').innerHTML = items.map(i => `
+  document.getElementById('staticRows').innerHTML = items.map(i => {
+    const active = i.IsActive !== false && String(i.IsActive).toUpperCase() !== 'FALSE';
+    const toggle = active
+      ? `<button class="link-btn" style="color:var(--ink-soft)" onclick="deactivateStatic('${i.ItemID}')">تعطيل</button>`
+      : `<button class="link-btn" style="color:var(--success)" onclick="activateStatic('${i.ItemID}')">إعادة تفعيل</button>`;
+    return `
     <tr>
-      <td><span class="status-dot"></span>${esc(i.Label)}
+      <td><span class="status-dot ${active ? '' : 'off'}"></span>${esc(i.Label)}
+        ${active ? '' : '<span class="off-tag">معطّل</span>'}
         ${isSpecial ? `<div class="tpl">${esc(i.Value) || 'بدون قالب'}</div>` : ''}</td>
       <td class="row-actions">
-        ${isSpecial ? `<button class="link-btn" style="color:var(--accent)" onclick="editTemplate('${i.ItemID}')">تعديل القالب</button>` : ''}
-        <button class="link-btn" onclick="deactivateStatic('${i.ItemID}')">تعطيل</button>
+        <button class="link-btn" style="color:var(--accent)" onclick="editStatic('${i.ItemID}')">تعديل</button>
+        ${toggle}
+        <button class="link-btn" onclick="deleteStatic('${i.ItemID}')">حذف</button>
       </td>
-    </tr>`).join('') || `<tr><td colspan="2" class="empty">لا توجد عناصر بعد.</td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="2" class="empty">لا توجد عناصر بعد.</td></tr>`;
 }
 async function addStaticItem(listKey) {
   const input = document.getElementById('newItemLabel');
@@ -426,14 +437,32 @@ async function addStaticItem(listKey) {
   await reloadSettings();
   renderPanel(); renderNav();
 }
-async function editTemplate(id) {
+const VALUE_LISTS = { SpecialItemType: 'قالب الصياغة', DecisionPhrase: 'نص الجملة' };
+async function editStatic(id) {
   const item = cache.settings.find(s => s.ItemID === id);
-  const val = prompt('قالب الصياغة:', item.Value || '');
-  if (val === null) return;
-  await API.call('updateSettingItem', { ItemID: id, patch: { Value: val.trim() } });
-  toast('تم حفظ القالب');
+  const label = prompt('الاسم / العنصر:', item.Label || '');
+  if (label === null) return;
+  const payload = { ItemID: id, Label: label.trim() };
+  if (VALUE_LISTS[item.ListName]) {
+    const val = prompt(VALUE_LISTS[item.ListName] + ':', item.Value || '');
+    if (val === null) return;
+    payload.Value = val.trim();
+  }
+  await API.call('updateSettingItemFields', payload);
+  toast('تم حفظ التعديل');
   await reloadSettings();
   renderPanel();
+}
+async function deleteStatic(id) {
+  if (!confirm('حذف هذا العنصر نهائيًا؟ (يُمنع الحذف إن كان مستخدمًا في سجلات قائمة)')) return;
+  try {
+    await API.call('deleteSettingItem', { ItemID: id });
+    toast('تم الحذف');
+    await reloadSettings();
+    renderPanel(); renderNav();
+  } catch (e) {
+    toast(e.message);
+  }
 }
 async function deactivateStatic(id) {
   await API.call('toggleSettingActive', { ItemID: id, IsActive: false });
@@ -441,11 +470,17 @@ async function deactivateStatic(id) {
   await reloadSettings();
   renderPanel(); renderNav();
 }
+async function activateStatic(id) {
+  await API.call('toggleSettingActive', { ItemID: id, IsActive: true });
+  toast('تم إعادة التفعيل');
+  await reloadSettings();
+  renderPanel(); renderNav();
+}
 
 /* ---------------- تحميل البيانات ---------------- */
 async function reloadOrgs() { cache.orgs = await API.call('listOrganizations'); }
 async function reloadMembers() { cache.members = await API.call('listBoardMembers'); }
-async function reloadSettings() { cache.settings = await API.call('listSettings'); }
+async function reloadSettings() { cache.settings = await API.call('listSettingsAdmin'); }
 async function reloadUsers() { cache.users = await API.call('listUsers'); }
 async function reloadPermissions() { cache.permissions = await API.call('listPermissionsCatalog'); }
 
