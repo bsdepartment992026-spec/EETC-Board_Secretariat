@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>طباعة القرارات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* هوامش صفر = لا رؤوس ولا تذييلات من المتصفح. الإطار والهوامش نرسمها نحن داخل كل صفحة. */
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E8EAED; font-family: 'Times New Roman', 'Traditional Arabic', serif; color: #000; }
+
+  .toolbar { position: sticky; top: 0; background: #1B2A41; color: #fff; padding: 10px 20px; display: flex;
+             gap: 14px; align-items: center; font-family: 'Cairo', sans-serif; font-size: 13px; z-index: 5; flex-wrap: wrap; }
+  .toolbar button { background: #A6802E; color: #fff; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .toolbar .hint { color: #C9CFD8; font-size: 12px; }
+
+  /* الصفحة: A4 ثابتة */
+  .page { width: 210mm; height: 297mm; position: relative; background: #fff; margin: 16px auto; overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0,0,0,.18); break-after: page; page-break-after: always; }
+  .page .content { position: absolute; top: 14mm; right: 16mm; bottom: 14mm; left: 16mm; overflow: hidden; }
+  .page .pageno { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 11pt; font-weight: 700; }
+
+  /* ترويسة الصفحة الأولى فقط */
+  .hd { margin-bottom: 4mm; }
+  .hd .right { text-align: right; font-size: 14pt; font-weight: 700; line-height: 1.5; }
+  .hd .c { text-align: center; font-size: 14pt; line-height: 1.5; }
+  .hd .ttl { text-align: center; font-size: 14pt; font-weight: 700; }
+
+  /* جدول القرارات: حدود خارجية + فاصل بين الأعمدة فقط — بدون أي خط أفقي بين الصفوف */
+  table.dec { width: 100%; border-collapse: collapse; table-layout: fixed; border: 0.35mm solid #000; }
+  table.dec thead th { font-size: 13pt; font-weight: 700; text-align: center; padding: 2mm 2mm; }
+  table.dec td { padding: 3mm 3mm; font-size: 12.5pt; vertical-align: top; text-align: right; word-wrap: break-word; }
+  table.dec td.num { text-align: center; white-space: nowrap; font-size: 12pt; }
+  table.dec td.subj { font-size: 12pt; line-height: 1.6; }
+  table.dec td.dec { font-size: 13pt; line-height: 1.7; }
+  table.dec .cd { border-left: 0.3mm solid #000; } /* الفاصل بين الأعمدة فقط */
+  table.dec tr.filler td { padding: 0; line-height: 0; font-size: 0; }
+  table.dec td.dec p { margin: 0 0 1.5mm; }
+  table.dec td.dec ul, table.dec td.dec ol { margin: 1mm 22px 1.5mm 0; padding: 0; }
+  table.dec td.dec table { border-collapse: collapse; width: 100%; margin: 1.5mm 0; }
+  table.dec td.dec table td, table.dec td.dec table th { border: 0.3mm solid #000; padding: 1.5mm 2mm; vertical-align: top; text-align: right; font-size: 12pt; }
+
+  /* تذييل التوقيع */
+  .sig { margin-top: 10mm; }
+  .sig table { width: 100%; border-collapse: collapse; }
+  .sig td { width: 50%; text-align: center; font-size: 14pt; font-weight: 700; border: none; padding-top: 6mm; }
+
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">🖨️ طباعة</button>
+    <span id="status">جارٍ تجهيز ملف القرارات...</span>
+    <span class="hint">اختر الحجم A4 والهوامش "None/بدون". الصفحات تظهر هنا كما ستُطبع تمامًا.</span>
+  </div>
+  <div id="pages"></div>
+
+<script src="js/api.js"></script>
+<script src="js/arabic.js"></script>
+<script>
+API.requireLogin();
+const MID = new URLSearchParams(location.search).get('id');
+const E = AR.esc;
+const pagesBox = document.getElementById('pages');
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function toAr(v) { return String(v == null ? '' : v).replace(/[0-9]/g, d => AR_DIGITS[+d]); }
+
+function setting(list, label) {
+  const r = list.find(s => s.ListName === 'General' && s.Label === label);
+  return r ? r.Value : '';
+}
+
+function subjectOf(it) {
+  if (it.MemoID) return it.Subject || '';
+  let s = AR.composeSpecial(it.SpecialTemplate || '', { SessionNumber: it.RefSessionNumber, SessionDate: it.RefSessionDate });
+  return (s || '').replace(/\s*0\s*$/, '').trim() || it.SpecialLabel || '';
+}
+
+/* ================= نموذج البلوكات -> HTML (نفس منطق decisions.html) ================= */
+function parseDecisionData(json, plain) {
+  if (json) { try { const b = JSON.parse(json); if (Array.isArray(b) && b.length) return b; } catch (e) { } }
+  if (plain) return [{ t: 'p', align: 'right', runs: [{ text: String(plain) }] }];
+  return [];
+}
+function runsToHtml(runs) {
+  return (runs || []).map(function (r) {
+    let txt = E(String(r.text == null ? '' : r.text)).replace(/\n/g, '<br>');
+    if (!txt) return '';
+    let inner = txt;
+    if (r.b) inner = '<b>' + inner + '</b>';
+    if (r.i) inner = '<i>' + inner + '</i>';
+    if (r.u) inner = '<u>' + inner + '</u>';
+    const st = [];
+    if (r.c) st.push('color:' + r.c);
+    if (r.s) st.push('font-size:' + r.s + 'pt');
+    if (st.length) inner = '<span style="' + st.join(';') + '">' + inner + '</span>';
+    return inner;
+  }).join('');
+}
+function tableBlockToHtml(b) {
+  let h = '<table><tbody>';
+  (b.rows || []).forEach(function (cells) {
+    h += '<tr>';
+    (cells || []).forEach(function (c) { h += '<td>' + (blocksToHtmlAll((c && c.blocks) || []) || '<br>') + '</td>'; });
+    h += '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+function blocksToHtmlAll(blocks) {
+  let html = '', i = 0;
+  blocks = blocks || [];
+  while (i < blocks.length) {
+    const b = blocks[i];
+    if (b.t === 'li') {
+      const ordered = !!b.ordered; let li = '';
+      while (i < blocks.length && blocks[i].t === 'li' && !!blocks[i].ordered === ordered) {
+        li += '<li>' + (runsToHtml(blocks[i].runs || []) || '<br>') + '</li>'; i++;
+      }
+      html += (ordered ? '<ol>' : '<ul>') + li + (ordered ? '</ol>' : '</ul>');
+      continue;
+    }
+    if (b.t === 'table') { html += tableBlockToHtml(b); i++; continue; }
+    const align = b.align ? ' style="text-align:' + b.align + '"' : '';
+    html += '<p' + align + '>' + (runsToHtml(b.runs || []) || '<br>') + '</p>';
+    i++;
+  }
+  return html;
+}
+
+/** يضيف بلوك واحد داخل خلية القرار، مع تجميع عناصر القوائم المتتالية داخل نفس <ul>/<ol>. يرجّع العنصر المُضاف فعليًا (لإزالته عند الفيض). */
+function appendBlockToCell(cell, block) {
+  if (block.t === 'li') {
+    const tag = block.ordered ? 'OL' : 'UL';
+    const last = cell.lastElementChild;
+    if (last && last.tagName === tag) {
+      const li = document.createElement('li');
+      li.innerHTML = runsToHtml(block.runs || []) || '<br>';
+      last.appendChild(li);
+      return li;
+    }
+    const list = document.createElement(tag.toLowerCase());
+    const li = document.createElement('li');
+    li.innerHTML = runsToHtml(block.runs || []) || '<br>';
+    list.appendChild(li);
+    cell.appendChild(list);
+    return list;
+  }
+  if (block.t === 'table') {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = tableBlockToHtml(block);
+    const node = wrap.firstElementChild;
+    cell.appendChild(node);
+    return node;
+  }
+  const p = document.createElement('p');
+  if (block.align) p.style.textAlign = block.align;
+  p.innerHTML = runsToHtml(block.runs || []) || '<br>';
+  cell.appendChild(p);
+  return p;
+}
+/** يزيل عنصرًا أُضيف بواسطة appendBlockToCell (عنصر li داخل قائمة قائمة، أو عنصر كامل). */
+function revertAppendedNode(node) {
+  if (node.tagName === 'LI' && node.parentNode && node.parentNode.children.length > 1) {
+    node.remove();
+  } else if (node.parentNode) {
+    node.remove();
+  }
+}
+
+/* ================= بناء صفحات A4 ================= */
+let pageIndex = 0;
+
+function makeFillerRow() {
+  const tr = document.createElement('tr');
+  tr.className = 'filler';
+  for (let i = 0; i < 3; i++) {
+    const td = document.createElement('td');
+    td.className = i < 2 ? 'cd' : '';
+    tr.appendChild(td);
+  }
+  return tr;
+}
+
+function buildPageShell(isFirstPage, narrow, meetingInfo) {
+  pageIndex++;
+  const page = document.createElement('div');
+  page.className = 'page';
+  pagesBox.appendChild(page);
+
+  const content = document.createElement('div');
+  content.className = 'content';
+  page.appendChild(content);
+
+  if (isFirstPage) {
+    const hd = document.createElement('div');
+    hd.className = 'hd';
+    hd.innerHTML =
+      '<div class="right">' + E(meetingInfo.company) + '</div>' +
+      '<div class="right">' + E(meetingInfo.board) + '</div>' +
+      '<div class="c">ــــــــــــــــــــ</div>' +
+      '<div class="ttl">" القرارات "</div>' +
+      '<div class="c">الصادرة في المسائل التي تضمنها جدول أعمال</div>' +
+      '<div class="c">الجلسة ' + E(meetingInfo.words) + ' لسنة ' + E(meetingInfo.year) + '</div>' +
+      '<div class="c">المنعقدة بتاريخ ' + E(meetingInfo.date) + '</div>';
+    content.appendChild(hd);
+  } else {
+    const pn = document.createElement('div');
+    pn.className = 'pageno';
+    pn.textContent = '- ' + toAr(pageIndex) + ' -';
+    page.appendChild(pn);
+  }
+
+  const table = document.createElement('table');
+  table.className = 'dec';
+  const cg = document.createElement('colgroup');
+  cg.innerHTML = narrow
+    ? '<col style="width:9%"><col style="width:15%"><col style="width:76%">'
+    : '<col style="width:9%"><col style="width:29%"><col style="width:62%">';
+  table.appendChild(cg);
+
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th class="cd">رقم المذكرة</th><th class="cd">الموضوع</th><th>القرار</th></tr>';
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const filler = makeFillerRow();
+  tbody.appendChild(filler);
+  table.appendChild(tbody);
+
+  content.appendChild(table);
+
+  return { page, content, table, tbody, filler, narrow };
+}
+
+function overflows(pg) {
+  return pg.content.scrollHeight > pg.content.clientHeight + 1;
+}
+
+/** يُنهي صفحة: يمدّد الصف الفارغ الأخير (والفواصل بين الأعمدة معه) حتى يغلق حد الجدول في نهاية الصفحة. */
+function closePage(pg, stretch) {
+  if (!stretch) return;
+  const tds = Array.from(pg.filler.children);
+  tds.forEach(td => td.style.height = '0px');
+  const natural = pg.table.scrollHeight;
+  const avail = pg.content.clientHeight;
+  const extra = avail - natural;
+  if (extra > 0) tds.forEach(td => td.style.height = extra + 'px');
+}
+
+function makeRow() {
+  const tr = document.createElement('tr');
+  const numTd = document.createElement('td'); numTd.className = 'num cd';
+  const subjTd = document.createElement('td'); subjTd.className = 'subj cd';
+  const decTd = document.createElement('td'); decTd.className = 'dec';
+  tr.appendChild(numTd); tr.appendChild(subjTd); tr.appendChild(decTd);
+  return { tr, numTd, subjTd, decTd };
+}
+
+async function build() {
+  const [data, settings] = await Promise.all([
+    API.call('getDecisionsForMeeting', { MeetingID: MID }),
+    API.call('listSettings')
+  ]);
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const m = data.meeting;
+  const company = setting(settings, 'CompanyName') || 'الشركة';
+  const board = setting(settings, 'BoardName') || 'مجلس الإدارة';
+  const meetingInfo = {
+    company, board,
+    words: AR.ordinal(m.SessionNumber, false),
+    year: toAr(AR.year(m.SessionDate)),
+    date: toAr(AR.formatDate(m.SessionDate))
+  };
+
+  const rows = (data.items || []).map(it => ({
+    num: (it.RollNumber === null || it.RollNumber === undefined) ? '' : toAr(it.RollNumber),
+    subject: subjectOf(it),
+    blocks: parseDecisionData(it.DecisionData, it.DecisionText)
+  }));
+
+  let pg = buildPageShell(true, false, meetingInfo);
+
+  rows.forEach(row => {
+    const r = makeRow();
+    r.numTd.textContent = row.num || '—';
+    r.subjTd.textContent = row.subject;
+    pg.tbody.insertBefore(r.tr, pg.filler);
+
+    // لو حتى صف فارغ (بدون أي نص قرار) مش هيدخل الصفحة، وفيه صفوف قبله فعلاً: ينتقل كصف جديد (عادي) لصفحة جديدة
+    if (overflows(pg) && pg.tbody.children.length > 2) {
+      pg.tbody.removeChild(r.tr);
+      closePage(pg, true);
+      pg = buildPageShell(false, false, meetingInfo);
+      pg.tbody.insertBefore(r.tr, pg.filler);
+    }
+
+    let decTd = r.decTd;
+    const blocks = row.blocks;
+    let i = 0;
+    while (i < blocks.length) {
+      const node = appendBlockToCell(decTd, blocks[i]);
+      if (overflows(pg)) {
+        const decHasPrior = decTd.children.length > 1;
+        const pageHasPriorRows = pg.tbody.children.length > 2;
+        if (decHasPrior || pageHasPriorRows) {
+          revertAppendedNode(node);
+          closePage(pg, true);
+          if (!decHasPrior) {
+            // الصف بالكامل لم يدخل هذه الصفحة إطلاقًا (ولو بقرار واحد) — ينتقل كصف جديد عادي لصفحة جديدة
+            pg.tbody.removeChild(r.tr);
+            pg = buildPageShell(false, false, meetingInfo);
+            pg.tbody.insertBefore(r.tr, pg.filler);
+          } else {
+            // القرار ممتد فعليًا إلى صفحة جديدة: صفحة استكمال بعمود موضوع مُصغّر، وخلايا رقم/موضوع فارغة
+            pg = buildPageShell(false, true, meetingInfo);
+            const r2 = makeRow();
+            pg.tbody.insertBefore(r2.tr, pg.filler);
+            decTd = r2.decTd;
+          }
+          continue; // أعد محاولة نفس البلوك على السياق الجديد دون تقدّم i
+        }
+        // لا يوجد أي مجال للتراجع (بلوك واحد أكبر من صفحة كاملة) — نقبله كما هو ونكمل
+      }
+      i++;
+    }
+  });
+
+  // تذييل التوقيع
+  const sig = document.createElement('div');
+  sig.className = 'sig';
+  sig.innerHTML = '<table><tr><td>أمين سر المجلس</td><td>رئيس مجلس الإدارة</td></tr></table>';
+  pg.content.appendChild(sig);
+  if (overflows(pg) && pg.tbody.children.length > 1) {
+    sig.remove();
+    closePage(pg, true);
+    pg = buildPageShell(false, false, meetingInfo);
+    // صفحة التوقيع فقط: لا داعي لعرض جدول قرارات فارغ
+    pg.table.remove();
+    pg.content.appendChild(sig);
+  }
+  closePage(pg, false); // الصفحة الأخيرة: لا تُمدَّد تلقائيًا لأنها تنتهي بالتوقيع
+
+  document.title = 'قرارات الجلسة ' + (m.SessionNumber || '') + ' لسنة ' + meetingInfo.year;
+  document.getElementById('status').textContent = m.SessionNumber
+    ? 'جاهز للطباعة — الجلسة ' + m.SessionNumber + ' لسنة ' + meetingInfo.year + ' (' + pagesBox.children.length + ' صفحات)'
+    : 'تنبيه: هذه الجلسة بدون رقم بعد (الرول غير معتمد).';
+}
+build().catch(e => { document.getElementById('status').textContent = 'خطأ: ' + e.message; });
+</script>
+</body>
+</html>

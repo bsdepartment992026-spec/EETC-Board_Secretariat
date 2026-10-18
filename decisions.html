@@ -109,7 +109,7 @@
         <span class="grow"></span>
         <select class="field" id="phraseSel" onchange="insertPhrase()" title="جمل القرارات الجاهزة"></select>
         <button class="ghost" onclick="saveAll(false)">💾 حفظ</button>
-        <button class="ghost" onclick="printDecisions()">🖨️ طباعة القرارات</button>
+        <button class="ghost" onclick="openPrintDecisions()">🖨️ طباعة القرارات</button>
         <button class="accent" id="approveBtn" onclick="approve()">✅ اعتماد قرارات الجلسة</button>
         <button class="ghost" id="uploadBtn" onclick="document.getElementById('fileInput').click()">📎 رفع ملف القرارات المعتمد</button>
         <input type="file" id="fileInput" accept="application/pdf" style="display:none" onchange="onFilePick(this)">
@@ -699,6 +699,10 @@ function blocksToPlain(blocks) {
 document.getElementById('rows').addEventListener('paste', rtOnPaste);
 
 /* ---------------- الطباعة ---------------- */
+function openPrintDecisions() {
+  if (!S.meetingId) { toast('اختر جلسة أولاً'); return; }
+  window.open('decisions-print.html?id=' + encodeURIComponent(S.meetingId), '_blank');
+}
 function printDecisions() {
   const items = collectItems();
   const rows = items.map(r => `<tr>
