@@ -23,15 +23,17 @@
   .page .content { position: absolute; top: 14mm; right: 16mm; bottom: 14mm; left: 16mm; overflow: hidden; }
   .page .pageno { position: absolute; bottom: 5mm; left: 0; right: 0; text-align: center; font-size: 11pt; font-weight: 700; }
 
-  /* ترويسة الصفحة الأولى فقط */
+  /* ترويسة الصفحة الأولى فقط: اسم الشركة ومجلس الإدارة والخط الفاصل تحتهما كلهم متمركزين
+     داخل عمود واحد مُزاح ناحية اليمين (نفس تقنية roll-print.html)، وباقي السطور تتوسط الصفحة كاملة. */
   .hd { margin-bottom: 4mm; }
-  .hd .right { text-align: right; font-size: 14pt; font-weight: 700; line-height: 1.5; }
-  .hd .c { text-align: center; font-size: 14pt; line-height: 1.5; }
-  .hd .ttl { text-align: center; font-size: 14pt; font-weight: 700; }
+  .hd .co { text-align: center; font-size: 14pt; font-weight: 700; line-height: 1.5; width: 58%; margin: 0 0 0 auto; }
+  .hd .rule { width: 30%; border-top: 0.35mm solid #000; margin: 1.5mm 0 4mm auto; }
+  .hd .ttl { text-align: center; font-size: 14pt; font-weight: 700; margin-bottom: 1mm; }
+  .hd .c { text-align: center; font-size: 14pt; font-weight: 700; line-height: 1.5; }
 
   /* جدول القرارات: حدود خارجية + فاصل بين الأعمدة فقط — بدون أي خط أفقي بين الصفوف */
   table.dec { width: 100%; border-collapse: collapse; table-layout: fixed; border: 0.35mm solid #000; }
-  table.dec thead th { font-size: 13pt; font-weight: 700; text-align: center; padding: 2mm 2mm; }
+  table.dec thead th { font-size: 13pt; font-weight: 700; text-align: center; padding: 2mm 2mm; border-bottom: 0.35mm solid #000; }
   table.dec td { padding: 3mm 3mm; font-size: 12.5pt; vertical-align: top; text-align: right; word-wrap: break-word; }
   table.dec td.num { text-align: center; white-space: nowrap; font-size: 12pt; }
   table.dec td.subj { font-size: 12pt; line-height: 1.6; }
@@ -109,7 +111,11 @@ function tableBlockToHtml(b) {
   let h = '<table><tbody>';
   (b.rows || []).forEach(function (cells) {
     h += '<tr>';
-    (cells || []).forEach(function (c) { h += '<td>' + (blocksToHtmlAll((c && c.blocks) || []) || '<br>') + '</td>'; });
+    (cells || []).forEach(function (c) {
+      const cs = (c && c.colspan > 1) ? ' colspan="' + c.colspan + '"' : '';
+      const rs = (c && c.rowspan > 1) ? ' rowspan="' + c.rowspan + '"' : '';
+      h += '<td' + cs + rs + '>' + (blocksToHtmlAll((c && c.blocks) || []) || '<br>') + '</td>';
+    });
     h += '</tr>';
   });
   return h + '</tbody></table>';
@@ -203,9 +209,9 @@ function buildPageShell(isFirstPage, narrow, meetingInfo) {
     const hd = document.createElement('div');
     hd.className = 'hd';
     hd.innerHTML =
-      '<div class="right">' + E(meetingInfo.company) + '</div>' +
-      '<div class="right">' + E(meetingInfo.board) + '</div>' +
-      '<div class="c">ــــــــــــــــــــ</div>' +
+      '<div class="co">' + E(meetingInfo.company) + '</div>' +
+      '<div class="co">' + E(meetingInfo.board) + '</div>' +
+      '<div class="rule"></div>' +
       '<div class="ttl">" القرارات "</div>' +
       '<div class="c">الصادرة في المسائل التي تضمنها جدول أعمال</div>' +
       '<div class="c">الجلسة ' + E(meetingInfo.words) + ' لسنة ' + E(meetingInfo.year) + '</div>' +
@@ -249,9 +255,11 @@ function closePage(pg, stretch) {
   if (!stretch) return;
   const tds = Array.from(pg.filler.children);
   tds.forEach(td => td.style.height = '0px');
-  const natural = pg.table.scrollHeight;
+  // offsetHeight (وليس scrollHeight) يشمل حدود الجدول نفسه، فنضمن إن الحد السفلي يفضل جوه منطقة
+  // overflow:hidden بدل ما يتقصّ. نطرح جزء بسيط إضافي كهامش أمان.
+  const natural = pg.table.offsetHeight;
   const avail = pg.content.clientHeight;
-  const extra = avail - natural;
+  const extra = avail - natural - 2;
   if (extra > 0) tds.forEach(td => td.style.height = extra + 'px');
 }
 

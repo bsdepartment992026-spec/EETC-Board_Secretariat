@@ -147,6 +147,24 @@
         <div class="name">الإعدادات</div>
         <div class="desc">الجهات، الأعضاء، القوائم، المستخدمون</div>
       </a>
+      <a class="tile" href="#" onclick="return comingSoon('محاضر الجلسات')">
+        <span class="icon">🗒️</span>
+        <div class="name">محاضر الجلسات</div>
+        <div class="desc">إعداد وطباعة محاضر جلسات مجلس الإدارة</div>
+        <div class="badge">قريبًا</div>
+      </a>
+      <a class="tile" href="#" onclick="return comingSoon('توزيع القرارات')">
+        <span class="icon">📤</span>
+        <div class="name">توزيع القرارات</div>
+        <div class="desc">توزيع قرارات الجلسة على الجهات المعنية</div>
+        <div class="badge">قريبًا</div>
+      </a>
+      <a class="tile" href="#" onclick="return comingSoon('الجمعية العمومية')">
+        <span class="icon">🏛️</span>
+        <div class="name">الجمعية العمومية</div>
+        <div class="desc">جلسات الجمعية العمومية العادية وغير العادية</div>
+        <div class="badge">قريبًا</div>
+      </a>
     </div>
   </div>
 
@@ -157,6 +175,25 @@
 API.requireLogin();
 
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1B2A41;color:#fff;padding:10px 20px;border-radius:5px;font-size:13px;z-index:20;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.style.display = 'none', 2600);
+}
+
+function comingSoon(name) {
+  showToast('قسم «' + name + '» قيد الإنشاء وسيتم تفعيله قريبًا.');
+  return false;
+}
 
 function applyPermissions() {
   const user = API.getUser();

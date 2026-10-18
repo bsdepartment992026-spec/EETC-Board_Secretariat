@@ -599,7 +599,12 @@ function rtSerializeTable(table) {
         if (td.tagName !== 'TD' && td.tagName !== 'TH') return;
         let blocks = rtCollectBlocks(td);
         if (!blocks.length) blocks = [{ t: 'p', align: 'right', runs: [] }];
-        cells.push({ blocks: blocks });
+        const cell = { blocks: blocks };
+        const cs = td.colSpan || (td.getAttribute && +td.getAttribute('colspan')) || 1;
+        const rs = td.rowSpan || (td.getAttribute && +td.getAttribute('rowspan')) || 1;
+        if (cs > 1) cell.colspan = cs;
+        if (rs > 1) cell.rowspan = rs;
+        cells.push(cell);
       });
       if (cells.length) rows.push(cells);
     });
@@ -662,7 +667,11 @@ function tableBlockToHtml(b) {
   let h = '<table><tbody>';
   (b.rows || []).forEach(function (cells) {
     h += '<tr>';
-    (cells || []).forEach(function (c) { h += '<td>' + (blocksToHtml((c && c.blocks) || []) || '<br>') + '</td>'; });
+    (cells || []).forEach(function (c) {
+      const cs = (c && c.colspan > 1) ? ' colspan="' + c.colspan + '"' : '';
+      const rs = (c && c.rowspan > 1) ? ' rowspan="' + c.rowspan + '"' : '';
+      h += '<td' + cs + rs + '>' + (blocksToHtml((c && c.blocks) || []) || '<br>') + '</td>';
+    });
     h += '</tr>';
   });
   return h + '</tbody></table>';
