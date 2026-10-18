@@ -32,14 +32,19 @@
   .hd .c { text-align: center; font-size: 14pt; font-weight: 700; line-height: 1.5; }
 
   /* جدول القرارات: حدود خارجية + فاصل بين الأعمدة فقط — بدون أي خط أفقي بين الصفوف */
-  table.dec { width: 100%; border-collapse: collapse; table-layout: fixed; border: 0.35mm solid #000; }
+  table.dec { width: 100%; border-collapse: collapse; table-layout: fixed;
+              border-top: 0.35mm solid #000; border-left: 0.35mm solid #000; border-right: 0.35mm solid #000;
+              border-bottom: 0.35mm solid #000; }
+  /* تُستخدم على صفحات يمتد فيها الجدول: الحد السفلي الحقيقي للجدول بيتشال، وبدل منه خط إغلاق
+     ثابت في آخر الصفحة (close-line) حتى لو الجدول نفسه محصّلش كل مساحة الصفحة. */
+  table.dec.no-bottom-border { border-bottom: none; }
+  .close-line { position: absolute; left: 0; right: 0; bottom: 0; border-top: 0.35mm solid #000; }
   table.dec thead th { font-size: 13pt; font-weight: 700; text-align: center; padding: 2mm 2mm; border-bottom: 0.35mm solid #000; }
   table.dec td { padding: 3mm 3mm; font-size: 12.5pt; vertical-align: top; text-align: right; word-wrap: break-word; }
   table.dec td.num { text-align: center; white-space: nowrap; font-size: 12pt; }
   table.dec td.subj { font-size: 12pt; line-height: 1.6; }
   table.dec td.dec { font-size: 13pt; line-height: 1.7; }
   table.dec .cd { border-left: 0.3mm solid #000; } /* الفاصل بين الأعمدة فقط */
-  table.dec tr.filler td { padding: 0; line-height: 0; font-size: 0; }
   table.dec td.dec p { margin: 0 0 1.5mm; }
   table.dec td.dec ul, table.dec td.dec ol { margin: 1mm 22px 1.5mm 0; padding: 0; }
   table.dec td.dec table { border-collapse: collapse; width: 100%; margin: 1.5mm 0; }
@@ -184,17 +189,6 @@ function revertAppendedNode(node) {
 /* ================= بناء صفحات A4 ================= */
 let pageIndex = 0;
 
-function makeFillerRow() {
-  const tr = document.createElement('tr');
-  tr.className = 'filler';
-  for (let i = 0; i < 3; i++) {
-    const td = document.createElement('td');
-    td.className = i < 2 ? 'cd' : '';
-    tr.appendChild(td);
-  }
-  return tr;
-}
-
 function buildPageShell(isFirstPage, narrow, meetingInfo) {
   pageIndex++;
   const page = document.createElement('div');
@@ -237,30 +231,25 @@ function buildPageShell(isFirstPage, narrow, meetingInfo) {
   table.appendChild(thead);
 
   const tbody = document.createElement('tbody');
-  const filler = makeFillerRow();
-  tbody.appendChild(filler);
   table.appendChild(tbody);
 
   content.appendChild(table);
 
-  return { page, content, table, tbody, filler, narrow };
+  return { page, content, table, tbody, narrow };
 }
 
 function overflows(pg) {
   return pg.content.scrollHeight > pg.content.clientHeight + 1;
 }
 
-/** يُنهي صفحة: يمدّد الصف الفارغ الأخير (والفواصل بين الأعمدة معه) حتى يغلق حد الجدول في نهاية الصفحة. */
+/** يُنهي صفحة امتدّ فيها الجدول لصفحة تالية: يشيل الحد السفلي الحقيقي للجدول (لأنه بيقف عند آخر
+    صف فعلي، مش آخر الصفحة)، ويرسم بدل منه خط إغلاق ثابت عند حد الصفحة السفلي دايمًا. */
 function closePage(pg, stretch) {
   if (!stretch) return;
-  const tds = Array.from(pg.filler.children);
-  tds.forEach(td => td.style.height = '0px');
-  // offsetHeight (وليس scrollHeight) يشمل حدود الجدول نفسه، فنضمن إن الحد السفلي يفضل جوه منطقة
-  // overflow:hidden بدل ما يتقصّ. نطرح جزء بسيط إضافي كهامش أمان.
-  const natural = pg.table.offsetHeight;
-  const avail = pg.content.clientHeight;
-  const extra = avail - natural - 2;
-  if (extra > 0) tds.forEach(td => td.style.height = extra + 'px');
+  pg.table.classList.add('no-bottom-border');
+  const line = document.createElement('div');
+  line.className = 'close-line';
+  pg.content.appendChild(line);
 }
 
 function makeRow() {
@@ -301,14 +290,14 @@ async function build() {
     const r = makeRow();
     r.numTd.textContent = row.num || '—';
     r.subjTd.textContent = row.subject;
-    pg.tbody.insertBefore(r.tr, pg.filler);
+    pg.tbody.appendChild(r.tr);
 
     // لو حتى صف فارغ (بدون أي نص قرار) مش هيدخل الصفحة، وفيه صفوف قبله فعلاً: ينتقل كصف جديد (عادي) لصفحة جديدة
-    if (overflows(pg) && pg.tbody.children.length > 2) {
+    if (overflows(pg) && pg.tbody.children.length > 1) {
       pg.tbody.removeChild(r.tr);
       closePage(pg, true);
       pg = buildPageShell(false, false, meetingInfo);
-      pg.tbody.insertBefore(r.tr, pg.filler);
+      pg.tbody.appendChild(r.tr);
     }
 
     let decTd = r.decTd;
@@ -318,7 +307,7 @@ async function build() {
       const node = appendBlockToCell(decTd, blocks[i]);
       if (overflows(pg)) {
         const decHasPrior = decTd.children.length > 1;
-        const pageHasPriorRows = pg.tbody.children.length > 2;
+        const pageHasPriorRows = pg.tbody.children.length > 1;
         if (decHasPrior || pageHasPriorRows) {
           revertAppendedNode(node);
           closePage(pg, true);
@@ -326,12 +315,12 @@ async function build() {
             // الصف بالكامل لم يدخل هذه الصفحة إطلاقًا (ولو بقرار واحد) — ينتقل كصف جديد عادي لصفحة جديدة
             pg.tbody.removeChild(r.tr);
             pg = buildPageShell(false, false, meetingInfo);
-            pg.tbody.insertBefore(r.tr, pg.filler);
+            pg.tbody.appendChild(r.tr);
           } else {
             // القرار ممتد فعليًا إلى صفحة جديدة: صفحة استكمال بعمود موضوع مُصغّر، وخلايا رقم/موضوع فارغة
             pg = buildPageShell(false, true, meetingInfo);
             const r2 = makeRow();
-            pg.tbody.insertBefore(r2.tr, pg.filler);
+            pg.tbody.appendChild(r2.tr);
             decTd = r2.decTd;
           }
           continue; // أعد محاولة نفس البلوك على السياق الجديد دون تقدّم i
@@ -347,7 +336,7 @@ async function build() {
   sig.className = 'sig';
   sig.innerHTML = '<table><tr><td>أمين سر المجلس</td><td>رئيس مجلس الإدارة</td></tr></table>';
   pg.content.appendChild(sig);
-  if (overflows(pg) && pg.tbody.children.length > 1) {
+  if (overflows(pg) && pg.tbody.children.length > 0) {
     sig.remove();
     closePage(pg, true);
     pg = buildPageShell(false, false, meetingInfo);
