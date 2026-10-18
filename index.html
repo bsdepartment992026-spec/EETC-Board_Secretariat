@@ -12,9 +12,9 @@
   * { box-sizing:border-box; }
   body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; padding:0; color:var(--ink); }
 
-  .masthead { background:var(--ink); color:#fff; padding:22px 28px 18px; text-align:center; }
-  .masthead .logo { width:110px; height:110px; margin:0 auto 12px; display:block; }
-  .masthead h1 { font-family:'Markazi Text', serif; font-size:22px; margin:0; font-weight:700; line-height:1.4; }
+  .masthead { background:var(--ink); color:#fff; padding:14px 28px 12px; text-align:center; }
+  .masthead .logo { width:70px; height:70px; margin:0 auto 8px; display:block; }
+  .masthead h1 { font-family:'Markazi Text', serif; font-size:18px; margin:0; font-weight:700; line-height:1.4; }
   .userbar { background:var(--surface); border-bottom:1px solid var(--line); padding:10px 28px;
              display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   .userbar .u { font-size:13.5px; color:var(--ink-soft); }
@@ -67,9 +67,9 @@
   .tile.disabled .badge { color:#B7BEC7; }
 
   @media (max-width:600px) {
-    .masthead { padding:16px 16px 14px; }
-    .masthead .logo { width:68px !important; height:68px !important; }
-    .masthead h1 { font-size:18px !important; }
+    .masthead { padding:12px 16px 10px; }
+    .masthead .logo { width:56px !important; height:56px !important; }
+    .masthead h1 { font-size:15px !important; }
     .userbar { padding:8px 16px; }
     .userbar .u { font-size:12.5px; }
     .wrap { padding:0 14px 24px; }
@@ -82,14 +82,12 @@
 </head>
 <body>
   <div class="masthead">
-    <img class="logo" src="logo.png" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:90px;height:90px;">
-    <h1 style="font-size:24px;margin-bottom:8px;">الشركة المصرية لنقل الكهرباء</h1>
-    <h1 style="font-size:22px;margin-top:0;">الإدارة العامة لشئون مجلس الإدارة</h1>
-  </div>
-
-  <div class="userbar">
-    <span class="u">المستخدم الحالي: <b id="userName"></b></span>
-    <button class="logoutbtn" onclick="API.logout()">🚪 تسجيل الخروج</button>
+    <div class="topbar" style="padding:0;background:transparent;">
+      <div class="top-nav"></div>
+    </div>
+    <img class="logo" src="logo.png" alt="شعار الشركة المصرية لنقل الكهرباء" style="width:64px;height:64px;">
+    <h1 style="font-size:17px;margin-bottom:5px;">الشركة المصرية لنقل الكهرباء</h1>
+    <h1 style="font-size:15.5px;margin-top:0;">الإدارة العامة لشئون مجلس الإدارة</h1>
   </div>
 
   <div class="wrap">
@@ -173,8 +171,10 @@
 
 <script src="js/api.js"></script>
 <script src="js/arabic.js"></script>
+<script src="js/nav.js"></script>
 <script>
 API.requireLogin();
+renderTopNav('home');
 
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -216,12 +216,6 @@ function markDisabled(tile) {
     b.className = 'badge'; b.textContent = 'بدون صلاحية';
     tile.appendChild(b);
   }
-}
-
-function renderUserBox() {
-  const user = API.getUser();
-  const el = document.getElementById('userName');
-  if (el && user) el.textContent = user.FullName;
 }
 
 async function loadDashboard() {
@@ -322,7 +316,6 @@ async function goToTotalMemos(e) {
   }
 }
 
-renderUserBox();
 applyPermissions();
 loadDashboard();
 </script>
