@@ -11,7 +11,7 @@
           --accent:#A6802E; --line:#E2E5EA; --success:#1F7A4D; }
   * { box-sizing:border-box; }
   body { font-family:'Cairo', sans-serif; background:var(--paper); margin:0; color:var(--ink); }
-  .wrap { max-width:720px; margin:0 auto; padding:24px; }
+  .wrap { max-width:980px; margin:0 auto; padding:24px; }
   h1 { font-family:'Markazi Text', serif; font-size:22px; margin:18px 0 14px; }
   .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:20px; margin-bottom:20px; }
   .panel h2 { font-family:'Markazi Text', serif; font-size:18px; margin:0 0 14px; }
@@ -75,6 +75,24 @@
       </div>
     </div>
 
+    <div class="row2">
+      <div>
+        <label>رقم قرار لجنة البت (اختياري)</label>
+        <input id="bidCommDecNo" placeholder="مثال: ١/٢٠٢٦">
+      </div>
+      <div>
+        <label>رقم جلسة لجنة البت (اختياري)</label>
+        <input id="bidCommSessNo" placeholder="مثال: ٥">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>تاريخ جلسة لجنة البت (اختياري)</label>
+        <input type="date" id="bidCommSessDate">
+      </div>
+      <div></div>
+    </div>
+
     <label>ملاحظات (اختياري)</label>
     <textarea id="notes"></textarea>
 
@@ -82,8 +100,37 @@
     <input type="file" id="scanFile" accept=".pdf,.jpg,.jpeg,.png">
 
     <button id="saveBtn" onclick="saveMemo()">حفظ المذكرة</button>
+    <button id="updateBtn" class="secondary" onclick="updateMemo()" style="display:none">تحديث المذكرة</button>
+    <button id="cancelEditBtn" class="secondary" onclick="cancelEdit()" style="display:none">إلغاء التعديل</button>
     <button id="insertBtn" class="secondary" onclick="saveAndInsert()" style="display:none">إدراج المذكرة في الجلسة الحالية</button>
-    <div class="hint" id="insertHint" style="display:none">إدراج المذكرة في الجلسة الحالية مباشرة بدون المرور بجدول الإجمالي.</div>
+  <div class="panel">
+      <h2>قائمة المذكرات السابقة</h2>
+      <div class="row2" style="margin-bottom:12px">
+        <input id="memoSearch" placeholder="بحث عن موضوع / جهة / رقم قرار لجنة البت / رقم جلسة لجنة البت">
+        <select id="memoStatus" onchange="renderMemos()">
+          <option value="">الكل</option>
+          <option value="Available">متاحة</option>
+          <option value="InRoll">مدرجة في رل</option>
+          <option value="Decided">صدر لها قرار</option>
+        </select>
+      </div>
+      <div class="table-wrap" style="overflow:auto">
+        <table class="memos-table" style="width:100%;border-collapse:collapse;font-size:12.5px">
+          <thead>
+            <tr style="background:#F3F4F6">
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">رقم المذكرة</th>
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">تاريخ الوارد</th>
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">الجهة</th>
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">الموضوع</th>
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">قرار لجنة البت</th>
+              <th style="text-align:right;padding:8px;border:1px solid var(--line)">جلسة لجنة البت</th>
+              <th style="text-align:center;padding:8px;border:1px solid var(--line)">تعديل</th>
+            </tr>
+          </thead>
+          <tbody id="memosBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -140,6 +187,9 @@ function collectMemoPayload() {
     OrganizationID: orgId,
     IncomingDate: document.getElementById('incomingDate').value,
     ReceiptTime: document.getElementById('receiptTime').value,
+    BidCommitteeDecisionNo: document.getElementById('bidCommDecNo').value.trim(),
+    BidCommitteeSessionNo: document.getElementById('bidCommSessNo').value.trim(),
+    BidCommitteeSessionDate: document.getElementById('bidCommSessDate').value,
     ChairmanOutgoingNo: document.getElementById('chairmanNo').value.trim(),
     ChairmanOutgoingDate: document.getElementById('chairmanDate').value,
     Notes: document.getElementById('notes').value.trim()
@@ -157,29 +207,85 @@ async function withScanFile(payload) {
 }
 
 function clearMemoForm() {
-  ['subject', 'incomingDate', 'receiptTime', 'chairmanNo', 'chairmanDate', 'notes'].forEach(function (id) {
-    document.getElementById(id).value = '';
+  ['subject','incomingDate','receiptTime','chairmanNo','chairmanDate','bidCommDecNo','bidCommSessNo','bidCommSessDate','notes'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
   document.getElementById('scanFile').value = '';
+  document.getElementById('saveBtn').style.display = 'inline-block';
+  document.getElementById('updateBtn').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  delete window._editMemoId;
 }
 
-async function saveMemo() {
+async function updateMemo() {
   const payload = collectMemoPayload();
-  if (!payload) return;
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.textContent = 'جارٍ الحفظ...';
+  if (!payload || !window._editMemoId) return;
+  payload.MemoID = window._editMemoId;
+  const btn = document.getElementById('updateBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ التحديث...';
   try {
-    await withScanFile(payload);
-    await API.call('addMemo', payload);
-    toast('تم حفظ المذكرة بنجاح — ستظهر في شاشة الرول عند التحضير للجلسة');
+    await API.call('updateMemo', payload);
+    toast('تم تحديث بيانات المذكرة ✅');
     clearMemoForm();
+    await loadMemosList();
   } catch (e) {
-    toast('خطأ: ' + (e && e.message ? e.message : 'حدث خطأ غير متوقع، جرّب مرة أخرى.'));
+    toast('خطأ: ' + (e && e.message ? e.message : 'حدث خطأ غير متوقع.'));
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'حفظ المذكرة';
+    btn.disabled = false; btn.textContent = 'تحديث المذكرة';
   }
+}
+function cancelEdit() { clearMemoForm(); }
+let allMemos = [];
+async function loadMemosList() {
+  allMemos = await API.call('listMemos');
+  renderMemos();
+}
+function renderMemos() {
+  const body = document.getElementById('memosBody');
+  if (!body) return;
+  const q = (document.getElementById('memoSearch')||{}).value||'';
+  const st = (document.getElementById('memoStatus')||{}).value||'';
+  let list = allMemos.slice();
+  if (st) list = list.filter(m=> (m.Status||'')===st);
+  if (q) {
+    const s = String(q).toLowerCase();
+    list = list.filter(m=>{
+      return [m.Subject,m.MemoID,m.BidCommitteeDecisionNo,m.BidCommitteeSessionNo,m.ChairmanOutgoingNo]
+        .some(v=> String(v||'').toLowerCase().includes(s));
+    });
+  }
+  body.innerHTML = list.length ? list.slice(0,200).map(m=>{
+    return `<tr>
+      <td style="border:1px solid var(--line);padding:6px">${m.MemoID}</td>
+      <td style="border:1px solid var(--line);padding:6px">${m.IncomingDate||''}</td>
+      <td style="border:1px solid var(--line);padding:6px">${m.OrgName||''}</td>
+      <td style="border:1px solid var(--line);padding:6px">${m.Subject||''}</td>
+      <td style="border:1px solid var(--line);padding:6px">${m.BidCommitteeDecisionNo||''}</td>
+      <td style="border:1px solid var(--line);padding:6px">${m.BidCommitteeSessionNo||''}${m.BidCommitteeSessionDate ? (' / '+m.BidCommitteeSessionDate) : ''}</td>
+      <td style="border:1px solid var(--line);padding:6px;text-align:center"><button class="secondary" style="margin:0;padding:4px 8px" onclick="editMemo('${m.MemoID}')">تعديل</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="border:1px solid var(--line);padding:8px;text-align:center">لا توجد مذكرات</td></tr>`;
+}
+async function editMemo(id){
+  const m = allMemos.find(x=>x.MemoID===id);
+  if(!m) return;
+  document.getElementById('subject').value = m.Subject||'';
+  document.getElementById('orgSelect').value = m.OrganizationID||'';
+  document.getElementById('incomingDate').value = m.IncomingDate||'';
+  document.getElementById('receiptTime').value = m.ReceiptTime||'';
+  document.getElementById('chairmanNo').value = m.ChairmanOutgoingNo||'';
+  document.getElementById('chairmanDate').value = m.ChairmanOutgoingDate||'';
+  document.getElementById('bidCommDecNo').value = m.BidCommitteeDecisionNo||'';
+  document.getElementById('bidCommSessNo').value = m.BidCommitteeSessionNo||'';
+  document.getElementById('bidCommSessDate').value = m.BidCommitteeSessionDate||'';
+  document.getElementById('notes').value = m.Notes||'';
+  document.getElementById('scanFile').value = '';
+  window._editMemoId = id;
+  document.getElementById('saveBtn').style.display = 'none';
+  document.getElementById('updateBtn').style.display = 'inline-block';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 async function saveAndInsert() {
@@ -211,12 +317,13 @@ async function saveAndInsert() {
   }
 }
 
-loadOrganizations().catch(e => toast('خطأ في تحميل الجهات: ' + e.message));
+loadOrganizations().then(loadMemosList).catch(e => toast('خطأ في التحميل: ' + e.message));
 
 if (API.hasPermission('ManageMeetings')) {
   document.getElementById('insertBtn').style.display = 'inline-block';
   document.getElementById('insertHint').style.display = 'block';
 }
+document.getElementById('memoSearch').addEventListener('input', renderMemos);
 </script>
 <div style="text-align:center;padding:20px;color:#4B5768;font-size:12px;margin-top:40px;border-top:1px solid #E2E5EA;">تصميم وتنفيذ أحمد أسامة حميده</div>
 </body>
